@@ -52,7 +52,7 @@ struct ContentView: View {
                     .id(session.id)
             }
             .inspector(isPresented: $model.showInspector) {
-                InspectorView(session: session)
+                InspectorView(session: session, initialTab: model.debugInspectorTab)
                     .inspectorColumnWidth(min: Layout.inspectorMin, ideal: Layout.inspectorIdeal, max: Layout.inspectorMax)
             }
         } else {
@@ -104,8 +104,12 @@ struct DetectionBanner: View {
 
 struct InspectorView: View {
     @Bindable var session: ToolSession
-    @State private var history: [HistoryEntry] = []
-    @State private var tab = 0
+    @State private var tab: Int
+
+    init(session: ToolSession, initialTab: Int = 0) {
+        self.session = session
+        _tab = State(initialValue: initialTab)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -120,22 +124,7 @@ struct InspectorView: View {
             Divider()
             switch tab {
             case 1:
-                List {
-                    if history.isEmpty { Text("No history yet").foregroundStyle(.secondary) }
-                    ForEach(history) { h in
-                        Button {
-                            session.inputText = h.input
-                            for (k, v) in h.options { session.options[k] = v }
-                        } label: {
-                            VStack(alignment: .leading, spacing: Space.xxs) {
-                                Text(h.input.prefix(120).replacingOccurrences(of: "\n", with: " ")).font(Typography.monoSmall).lineLimit(2)
-                                Text(h.createdAt, style: .relative).font(.caption2).foregroundStyle(.secondary)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .task(id: session.runCount) { history = (try? await DataStore.shared.history(toolID: session.tool.id, limit: 50)) ?? [] }
+                InspectorHistoryView(session: session)
             case 2:
                 ScrollView {
                     VStack(alignment: .leading, spacing: Space.md) {

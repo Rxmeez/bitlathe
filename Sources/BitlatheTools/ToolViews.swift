@@ -6,5 +6,6 @@ import BitlatheUI
 @MainActor
 enum ToolViews {
     static func registerAll() {
+        JSONTreeViewRegistration.register()
     }
 }

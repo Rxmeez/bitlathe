@@ -4,9 +4,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 CONFIG="${1:-Debug}"
 CONFIG="$(tr '[:lower:]' '[:upper:]' <<< "${CONFIG:0:1}")${CONFIG:1}"
-if [[ ! -d Bitlathe.xcodeproj || project.yml -nt Bitlathe.xcodeproj/project.pbxproj ]]; then
-  xcodegen generate --quiet
-fi
+# Always regenerate: XcodeGen globs App/, so new files (e.g. from merges) must be picked up. It takes ~1 s.
+xcodegen generate --quiet
 DERIVED=".build/DerivedData"
 LOG="$DERIVED/last-build.log"
 mkdir -p "$DERIVED"

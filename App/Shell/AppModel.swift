@@ -46,6 +46,7 @@ final class AppModel {
                 let idx = defaults.integer(forKey: "BLSample")
                 if tool.samples.indices.contains(idx) { session(for: tool).useSample(tool.samples[idx]) }
             }
+            if let sec = defaults.string(forKey: "BLSecondary") { session(for: tool).secondaryText = sec.replacingOccurrences(of: "\\n", with: "\n") }
             if defaults.bool(forKey: "BLInspector") { showInspector = true }
         }
         if let q = defaults.string(forKey: "BLSearch") { searchText = q }

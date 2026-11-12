@@ -8,5 +8,6 @@ enum ToolViews {
     static func registerAll() {
         ToolViewRegistry.register(RegexTool.id) { session in AnyView(RegexView(session: session)) }
         JSONTreeViewRegistration.register()
+        DiffToolViewRegistration.register()
     }
 }

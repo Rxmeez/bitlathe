@@ -2,6 +2,10 @@
 # Launch a tool with a sample and capture the window. Usage: scripts/shot.sh <tool.id> <sampleIndex> <out.png> [light|dark] [inspector]
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# Several agents may share this Mac: take a global lock so only one launches/captures at a time.
+LOCK=/tmp/bitlathe-shot.lock
+for _ in {1..600}; do mkdir "$LOCK" 2>/dev/null && break; sleep 0.5; done
+trap 'pkill -x Bitlathe 2>/dev/null || true; rmdir "$LOCK" 2>/dev/null || true' EXIT
 APP=".build/DerivedData/Build/Products/Debug/Bitlathe.app"
 pkill -x Bitlathe 2>/dev/null || true; while pgrep -x Bitlathe >/dev/null; do sleep 0.2; done; sleep 0.3
 EXTRA=()

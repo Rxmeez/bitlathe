@@ -18,6 +18,7 @@ fi
 grep -E "warning:" "$LOG" | grep -v appintentsmetadataprocessor | sort -u || true
 echo "** BUILD SUCCEEDED **"
 APP="$DERIVED/Build/Products/$CONFIG/Bitlathe.app"
+if [[ "${BUILD_ONLY:-0}" == "1" ]]; then echo "Built $APP"; exit 0; fi
 if [[ ! -d "$APP" ]]; then echo "Build failed"; exit 1; fi
 pkill -x Bitlathe 2>/dev/null || true
 open "$APP"

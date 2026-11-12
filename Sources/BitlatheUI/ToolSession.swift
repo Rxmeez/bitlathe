@@ -39,7 +39,7 @@ public final class ToolSession: Identifiable {
     public init(tool: AnyTool, input: String = "", options: OptionValues = [:]) {
         self.tool = tool
         self.options = tool.optionFields.defaults.merging(options) { _, new in new }
-        self.orientation = Settings.shared.splitOrientation(for: tool.id)
+        self.orientation = Settings.shared.storedSplitOrientation(for: tool.id) ?? (Self.prefersCompactInput(tool) ? .vertical : .horizontal)
         if !input.isEmpty {
             self.inputText = input
             scheduleRun(immediate: true)
@@ -47,6 +47,15 @@ public final class ToolSession: Identifiable {
             scheduleRun(immediate: true)
         }
     }
+
+    /// Tools whose inputs are a single short line (a timestamp, a colour, a CIDR block) get a short input strip
+    /// above a tall output instead of a half-empty side-by-side split.
+    public static func prefersCompactInput(_ tool: AnyTool) -> Bool {
+        guard tool.io.input == .text, !tool.io.dualInput, !tool.samples.isEmpty else { return false }
+        return tool.samples.allSatisfy { !$0.input.contains("\n") && $0.input.count <= 120 }
+    }
+
+    public var compactInput: Bool { Self.prefersCompactInput(tool) }
 
     public var inputPayload: ToolPayload {
         if let o = inputPayloadOverride { return o }

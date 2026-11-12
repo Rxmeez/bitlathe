@@ -160,7 +160,12 @@ public final class Settings {
     }
 
     public func splitOrientation(for toolID: String) -> SplitOrientation {
-        SplitOrientation(rawValue: splitOrientations[toolID] ?? "") ?? .horizontal
+        storedSplitOrientation(for: toolID) ?? .horizontal
+    }
+
+    /// The layout the user explicitly chose for a tool, if any.
+    public func storedSplitOrientation(for toolID: String) -> SplitOrientation? {
+        SplitOrientation(rawValue: splitOrientations[toolID] ?? "")
     }
 
     public func setSplitOrientation(_ o: SplitOrientation, for toolID: String) {

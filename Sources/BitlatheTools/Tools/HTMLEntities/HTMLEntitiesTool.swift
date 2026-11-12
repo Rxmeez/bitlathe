@@ -6,7 +6,7 @@ public struct HTMLEntitiesTool: DevTool {
     public static let name = "HTML Entities"
     public static let summary = "Encode text as HTML entities (named, decimal or hex) and decode entities back"
     public static let category = ToolCategory.encode
-    public static let symbol = "ampersand"
+    public static let symbol = "textformat.alt"
     public static let keywords = ["html", "entity", "entities", "escape", "unescape", "&amp;", "&lt;", "encode", "decode"]
     public static let samples = [ToolSample("Encode", "<a href=\"x\">Tom & Jerry's café</a> © 2026"), ToolSample("Decode", "&lt;p&gt;Caf&eacute; &amp; cr&#232;me &#x2014; &copy;&lt;/p&gt;", options: ["mode": .string("decode")])]
     public static let optionFields: [OptionField] = [

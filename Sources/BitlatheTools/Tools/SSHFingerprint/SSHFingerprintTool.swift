@@ -7,7 +7,7 @@ public struct SSHFingerprintTool: DevTool {
     public static let name = "SSH Key Fingerprint"
     public static let summary = "MD5 and SHA-256 fingerprints, key type, bits and randomart for OpenSSH public keys"
     public static let category = ToolCategory.inspect
-    public static let symbol = "fingerprint"
+    public static let symbol = "touchid"
     public static let keywords = ["ssh", "fingerprint", "public key", "authorized_keys", "known_hosts", "ed25519", "rsa", "randomart", "md5", "sha256"]
     public static let samples = [ToolSample("Ed25519 key", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGl3xdcCb8qD3YmQ4D1Lw5K2L3Z8s8HnqZ0dQ2u3V8d4 ada@bitlathe")]
     public struct Options: ToolOptions { public init() {} }

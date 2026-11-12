@@ -29,7 +29,8 @@ final class AppModel {
     var detectedText: String?
 
     private var sessions: [String: ToolSession] = [:]
-    private var lastClipboardChange = NSPasteboard.general.changeCount
+    /// -1 so whatever is on the clipboard when the app first opens gets examined once.
+    private var lastClipboardChange = -1
 
     init() {
         ToolCatalog.registerAll(in: registry)
@@ -46,6 +47,7 @@ final class AppModel {
             }
             if defaults.bool(forKey: "BLInspector") { showInspector = true }
         }
+        if let q = defaults.string(forKey: "BLSearch") { searchText = q }
         #endif
         NotificationCenter.default.addObserver(forName: .bitlatheFavouritesChanged, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in await self?.refreshUsage() }

@@ -378,13 +378,17 @@ public struct SectionCard<Content: View>: View {
 
 public struct SplitPane<First: View, Second: View>: View {
     @Binding var orientation: SplitOrientation
-    @State private var ratio: CGFloat = 0.5
+    @State private var ratio: CGFloat
     @State private var dragStart: CGFloat?
+    let minFirst: CGFloat
     let first: First
     let second: Second
 
-    public init(orientation: Binding<SplitOrientation>, @ViewBuilder first: () -> First, @ViewBuilder second: () -> Second) {
+    public init(orientation: Binding<SplitOrientation>, initialRatio: CGFloat = 0.5, minFirst: CGFloat = 120,
+                @ViewBuilder first: () -> First, @ViewBuilder second: () -> Second) {
         _orientation = orientation
+        _ratio = State(initialValue: initialRatio)
+        self.minFirst = minFirst
         self.first = first()
         self.second = second()
     }
@@ -393,7 +397,7 @@ public struct SplitPane<First: View, Second: View>: View {
         GeometryReader { geo in
             let horizontal = orientation == .horizontal
             let total = horizontal ? geo.size.width : geo.size.height
-            let firstSize = max(120, min(total - 120, total * ratio))
+            let firstSize = max(minFirst, min(total - 120, total * ratio))
             ZStack(alignment: .topLeading) {
                 if horizontal {
                     HStack(spacing: 0) {

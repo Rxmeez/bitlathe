@@ -6,14 +6,33 @@ public enum Fuzzy {
     public static func score(query: String, in primary: String, secondary: String? = nil) -> Int? {
         let q = Array(query.lowercased())
         guard !q.isEmpty else { return 0 }
-        if let s = subsequenceScore(q, Array(primary.lowercased()), weight: 3) { return s + 1000 }
+        let name = primary.lowercased()
+        let ql = query.lowercased()
+        if name.hasPrefix(ql) { return 3000 - name.count }
+        if name.contains(ql) { return 2000 - name.count }
+        if let s = subsequenceScore(q, Array(name), weight: 3), isTight(q, Array(name)) { return s + 1000 }
         if let secondary {
-            // Word-level containment in keywords/summary.
+            // Whole-word or substring containment in id, keywords and summary — never scattered letters.
             let lower = secondary.lowercased()
-            if lower.contains(query.lowercased()) { return 500 }
-            if let s = subsequenceScore(q, Array(lower), weight: 1) { return s }
+            let words = lower.split { !$0.isLetter && !$0.isNumber }
+            if words.contains(where: { $0.hasPrefix(ql) }) { return 600 }
+            if ql.count >= 3, lower.contains(ql) { return 400 }
         }
         return nil
+    }
+
+    /// A subsequence match is "tight" when every matched character starts a word or follows the previous match.
+    /// This accepts "jf" → "JSON Formatter" and "b64" → "Base64" but rejects "base" → "SCSS Formatter".
+    private static func isTight(_ q: [Character], _ t: [Character]) -> Bool {
+        var qi = 0
+        var last = -2
+        for (i, c) in t.enumerated() where qi < q.count && c == q[qi] {
+            let wordStart = i == 0 || !(t[i - 1].isLetter || t[i - 1].isNumber) || (t[i].isNumber && !t[i - 1].isNumber)
+            guard wordStart || i == last + 1 else { continue }
+            last = i
+            qi += 1
+        }
+        return qi == q.count
     }
 
     private static func subsequenceScore(_ q: [Character], _ t: [Character], weight: Int) -> Int? {

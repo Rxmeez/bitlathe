@@ -6,6 +6,7 @@ import BitlatheTools
 struct ContentView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openSettings) private var openSettings
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
@@ -32,7 +33,12 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             model.detectClipboardIfNeeded()
         }
-        .onAppear { model.detectClipboardIfNeeded() }
+        .onAppear {
+            model.detectClipboardIfNeeded()
+            #if DEBUG
+            if UserDefaults.standard.bool(forKey: "BLSettings") { openSettings() }
+            #endif
+        }
     }
 
     @ViewBuilder
@@ -81,8 +87,11 @@ struct DetectionBanner: View {
                 }
             }
             Spacer()
-            Text(DurationFormatter.ms(report.duration)).font(.caption2.monospacedDigit()).foregroundStyle(.tertiary)
-            Button { model.dismissDetection() } label: { Image(systemName: "xmark") }.buttonStyle(.borderless)
+            Button { model.dismissDetection() } label: { Image(systemName: "xmark") }
+                .buttonStyle(.borderless)
+                .keyboardShortcut(.cancelAction)
+                .help("Dismiss (Esc) · detected in \(DurationFormatter.ms(report.duration))")
+                .accessibilityLabel("Dismiss suggestion")
         }
         .padding(.horizontal, Space.lg)
         .padding(.vertical, Space.sm)

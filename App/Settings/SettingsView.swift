@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 import BitlatheCore
 import BitlatheUI
 
@@ -7,28 +8,45 @@ struct SettingsView: View {
 
     var body: some View {
         TabView {
-            GeneralSettings().tabItem { Label("General", systemImage: "gearshape") }
-            AppearanceSettings().tabItem { Label("Appearance", systemImage: "paintbrush") }
-            EditorSettings().tabItem { Label("Editor", systemImage: "text.cursor") }
-            DetectionSettings().tabItem { Label("Detection", systemImage: "wand.and.stars") }
-            HistorySettings().tabItem { Label("History & Privacy", systemImage: "clock.arrow.circlepath") }
-            ToolsSettings().tabItem { Label("Tools", systemImage: "wrench.and.screwdriver") }
-            AdvancedSettings().tabItem { Label("Advanced", systemImage: "slider.horizontal.3") }
+            GeneralSettings().frame(width: 580, height: 230).tabItem { Label("General", systemImage: "gearshape") }
+            AppearanceSettings().frame(width: 580, height: 260).tabItem { Label("Appearance", systemImage: "paintbrush") }
+            EditorSettings().frame(width: 580, height: 380).tabItem { Label("Editor", systemImage: "text.cursor") }
+            DetectionSettings().frame(width: 580, height: 520).tabItem { Label("Detection", systemImage: "wand.and.stars") }
+            HistorySettings().frame(width: 580, height: 560).tabItem { Label("History & Privacy", systemImage: "clock.arrow.circlepath") }
+            ToolsSettings().frame(width: 580, height: 560).tabItem { Label("Tools", systemImage: "wrench.and.screwdriver") }
+            AdvancedSettings().frame(width: 580, height: 300).tabItem { Label("Advanced", systemImage: "slider.horizontal.3") }
         }
-        .frame(width: 560, height: 440)
     }
 }
 
 struct GeneralSettings: View {
     @State private var settings = Settings.shared
+    @State private var loginError: String?
+
     var body: some View {
         @Bindable var s = settings
         Form {
-            Toggle("Launch at login", isOn: $s.launchAtLogin)
-            Picker("Show in", selection: $s.dockMode) { ForEach(DockMode.allCases, id: \.self) { Text($0.title).tag($0) } }
-            Text("Menu bar Quick Panel, global hotkeys and Services arrive in the next milestone.").font(.caption).foregroundStyle(.secondary)
+            Section {
+                Toggle("Open Bitlathe at login", isOn: Binding(get: { SMAppService.mainApp.status == .enabled }, set: { on in setLaunchAtLogin(on) }))
+                if let loginError { Text(loginError).font(.caption).foregroundStyle(Palette.danger) }
+            }
+            Section {
+                Toggle("Detect what's on the clipboard when Bitlathe comes forward", isOn: $s.detectOnFocus)
+            } footer: {
+                Text("The menu bar Quick Panel, global hotkeys and Services menu are coming in a later update.").font(.caption).foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
+    }
+
+    private func setLaunchAtLogin(_ on: Bool) {
+        do {
+            if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+            settings.launchAtLogin = on
+            loginError = nil
+        } catch {
+            loginError = "Couldn't change the login item: \(error.localizedDescription)"
+        }
     }
 }
 

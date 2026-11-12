@@ -123,7 +123,9 @@ struct GenericToolBody: View {
         if session.tool.io.input == .none {
             OutputPane(session: session, config: config)
         } else {
-            SplitPane(orientation: $session.orientation) {
+            SplitPane(orientation: $session.orientation,
+                      initialRatio: session.compactInput && session.orientation == .vertical ? 0.2 : 0.5,
+                      minFirst: session.compactInput && session.orientation == .vertical ? 96 : 120) {
                 InputPane(session: session, config: config)
             } second: {
                 OutputPane(session: session, config: config)

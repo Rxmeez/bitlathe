@@ -11,7 +11,7 @@ DERIVED=".build/DerivedData"
 LOG="$DERIVED/last-build.log"
 mkdir -p "$DERIVED"
 if ! xcodebuild -project Bitlathe.xcodeproj -scheme Bitlathe -configuration "$CONFIG" -derivedDataPath "$DERIVED" -destination 'platform=macOS' build > "$LOG" 2>&1; then
-  grep -E "error:" "$LOG" | sort -u
+  if ! grep -E "error:" "$LOG" | sort -u; then tail -25 "$LOG"; fi
   echo "Build failed (full log: $LOG)"
   exit 1
 fi

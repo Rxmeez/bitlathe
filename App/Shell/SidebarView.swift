@@ -36,7 +36,8 @@ struct SidebarView: View {
         .searchable(text: $model.searchText, placement: .sidebar, prompt: "Search tools")
         .safeAreaInset(edge: .bottom) {
             HStack {
-                Text("\(model.visibleTools.count) tools").font(.caption).foregroundStyle(.secondary)
+                Text(model.searchText.isEmpty ? "\(model.visibleTools.count) tools" : "\(model.filteredTools.count) of \(model.visibleTools.count) tools")
+                    .font(.caption).foregroundStyle(.secondary).monospacedDigit()
                 Spacer()
                 SettingsLink { Image(systemName: "gearshape") }.buttonStyle(.borderless).help("Settings (⌘,)")
             }

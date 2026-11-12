@@ -25,6 +25,7 @@ final class AppModel {
     var frequent: [String] = []
     var recent: [String] = []
     var showInspector = Settings.shared.inspectorVisible { didSet { settings.inspectorVisible = showInspector } }
+    var showPalette = false
     var detectionReport: DetectionReport?
     var detectedText: String?
 
@@ -48,11 +49,15 @@ final class AppModel {
             if defaults.bool(forKey: "BLInspector") { showInspector = true }
         }
         if let q = defaults.string(forKey: "BLSearch") { searchText = q }
+        if defaults.bool(forKey: "BLPalette") { showPalette = true }
         #endif
         NotificationCenter.default.addObserver(forName: .bitlatheFavouritesChanged, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in await self?.refreshUsage() }
         }
     }
+
+    func togglePalette() { showPalette.toggle(); if !showPalette { focusEditor() } }
+    func closePalette(refocus: Bool = true) { guard showPalette else { return }; showPalette = false; if refocus { focusEditor() } }
 
     var selectedTool: AnyTool? { selectedToolID.flatMap { registry.tool($0) } }
 

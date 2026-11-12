@@ -1,0 +1,77 @@
+name: Bitlathe
+options:
+  bundleIdPrefix: com.bitlathe
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.4"
+  generateEmptyDirectories: true
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_HARDENED_RUNTIME: YES
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGN_IDENTITY: "-"
+    ARCHS: "$(ARCHS_STANDARD)"
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+    GCC_TREAT_WARNINGS_AS_ERRORS: NO
+    DEAD_CODE_STRIPPING: YES
+  configs:
+    Debug:
+      ONLY_ACTIVE_ARCH: YES
+    Release:
+      ONLY_ACTIVE_ARCH: NO
+packages:
+  BitlathePackage:
+    path: .
+targets:
+  Bitlathe:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+    dependencies:
+      - package: BitlathePackage
+        product: BitlatheCore
+      - package: BitlathePackage
+        product: BitlatheUI
+      - package: BitlathePackage
+        product: BitlatheTools
+    entitlements:
+      path: App/Bitlathe.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-write: true
+        com.apple.security.files.bookmarks.app-scope: true
+        com.apple.security.print: true
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleName: Bitlathe
+        CFBundleDisplayName: Bitlathe
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        LSMinimumSystemVersion: "$(MACOSX_DEPLOYMENT_TARGET)"
+        NSHumanReadableCopyright: "© 2026 Bitlathe"
+        LSApplicationCategoryType: public.app-category.developer-tools
+        NSPrincipalClass: NSApplication
+        NSMainStoryboardFile: ""
+        CFBundleURLTypes:
+          - CFBundleURLName: com.bitlathe.app
+            CFBundleURLSchemes: [bitlathe]
+        NSAppleEventsUsageDescription: Bitlathe uses Apple Events only for the Services menu.
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bitlathe.app
+        PRODUCT_NAME: Bitlathe
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DIRECT_DISTRIBUTION"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_PREVIEWS: YES
+        COMBINE_HIDPI_IMAGES: YES
+    scheme:
+      testTargets: []
+      gatherCoverageData: false

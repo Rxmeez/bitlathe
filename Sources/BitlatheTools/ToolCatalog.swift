@@ -1,0 +1,108 @@
+import Foundation
+import BitlatheCore
+
+/// Every native tool, in sidebar order. Adding a tool = adding its folder + one line here.
+public enum ToolCatalog {
+    public static let all: [AnyTool] = [
+        // Format & validate
+        AnyTool(JSONFormatTool.self),
+        AnyTool(HTMLFormatTool.self),
+        AnyTool(CSSFormatTool.self),
+        AnyTool(JavaScriptFormatTool.self),
+        AnyTool(TypeScriptFormatTool.self),
+        AnyTool(XMLFormatTool.self),
+        AnyTool(SCSSFormatTool.self),
+        AnyTool(LESSFormatTool.self),
+        AnyTool(ERBFormatTool.self),
+        AnyTool(SQLFormatTool.self),
+        AnyTool(GraphQLFormatTool.self),
+        AnyTool(YAMLFormatTool.self),
+        AnyTool(TOMLFormatTool.self),
+        AnyTool(LineToolsTool.self),
+        // Converters
+        AnyTool(YAMLJSONTool.self),
+        AnyTool(JSONCSVTool.self),
+        AnyTool(JSONTOMLTool.self),
+        AnyTool(JSONXMLTool.self),
+        AnyTool(JSONPlistTool.self),
+        AnyTool(JSONQueryStringTool.self),
+        AnyTool(JSONToCodeTool.self),
+        AnyTool(PHPArrayJSONTool.self),
+        AnyTool(PHPSerializeTool.self),
+        AnyTool(HTMLToJSXTool.self),
+        AnyTool(SVGToCSSTool.self),
+        AnyTool(SVGToCodeTool.self),
+        AnyTool(CurlToCodeTool.self),
+        AnyTool(CodeToCurlTool.self),
+        AnyTool(CaseConverterTool.self),
+        AnyTool(NumberBaseTool.self),
+        AnyTool(HexTextTool.self),
+        AnyTool(ByteSizeTool.self),
+        AnyTool(UnitConverterTool.self),
+        AnyTool(CSVViewerTool.self),
+        AnyTool(MarkdownHTMLTool.self),
+        // Encoders & decoders
+        AnyTool(Base64TextTool.self),
+        AnyTool(Base64ImageTool.self),
+        AnyTool(URLEncodeTool.self),
+        AnyTool(HTMLEntitiesTool.self),
+        AnyTool(BackslashTool.self),
+        AnyTool(Base32Tool.self),
+        AnyTool(Base58Tool.self),
+        AnyTool(Base85Tool.self),
+        AnyTool(CompressTool.self),
+        AnyTool(UnicodeEscapeTool.self),
+        AnyTool(PunycodeTool.self),
+        AnyTool(QuotedPrintableTool.self),
+        AnyTool(BinaryDecodeTool.self),
+        AnyTool(StringEscapeTool.self),
+        // Inspect & debug
+        AnyTool(UnixTimeTool.self),
+        AnyTool(CronTool.self),
+        AnyTool(URLParseTool.self),
+        AnyTool(UserAgentTool.self),
+        AnyTool(HTTPReferenceTool.self),
+        AnyTool(MIMELookupTool.self),
+        AnyTool(ChmodTool.self),
+        AnyTool(CIDRTool.self),
+        AnyTool(SemverTool.self),
+        AnyTool(EnvInspectTool.self),
+        AnyTool(JWTTool.self),
+        AnyTool(CertificateTool.self),
+        AnyTool(SSHFingerprintTool.self),
+        AnyTool(RegexTool.self),
+        AnyTool(DiffTool.self),
+        AnyTool(StringInspectorTool.self),
+        AnyTool(ColorTool.self),
+        AnyTool(HTMLPreviewTool.self),
+        AnyTool(MarkdownPreviewTool.self),
+        AnyTool(HexViewerTool.self),
+        AnyTool(FileChecksumTool.self),
+        AnyTool(ImageMetadataTool.self),
+        // Generators
+        AnyTool(IDGeneratorTool.self),
+        AnyTool(HashGeneratorTool.self),
+        AnyTool(PasswordHashTool.self),
+        AnyTool(RandomStringTool.self),
+        AnyTool(LoremIpsumTool.self),
+        AnyTool(QRCodeTool.self),
+        AnyTool(BarcodeTool.self),
+        AnyTool(FakeDataTool.self),
+        AnyTool(PKCETool.self),
+        AnyTool(KeyGenTool.self),
+        AnyTool(AESGCMTool.self),
+        AnyTool(PlaceholderImageTool.self),
+        AnyTool(IconSetTool.self),
+        AnyTool(GitignoreTool.self),
+        // Images & media
+        AnyTool(ImageConvertTool.self),
+        AnyTool(SVGOptimizeTool.self),
+        AnyTool(OCRTool.self),
+    ]
+
+    @MainActor
+    public static func registerAll(in registry: ToolRegistry = .shared) {
+        registry.register(all)
+        ToolViews.registerAll()
+    }
+}

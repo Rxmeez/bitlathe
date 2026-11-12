@@ -1,0 +1,154 @@
+import SwiftUI
+import BitlatheCore
+import BitlatheUI
+import BitlatheTools
+
+struct ContentView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
+
+    var body: some View {
+        @Bindable var model = model
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            SidebarView()
+                .navigationSplitViewColumnWidth(min: Layout.sidebarMin, ideal: Layout.sidebarIdeal, max: Layout.sidebarMax)
+        } detail: {
+            detail
+        }
+        .navigationTitle(model.selectedTool?.name ?? "Bitlathe")
+        .modifier(HideToolbarTitle())
+        .toolbar {
+            ToolbarItem(placement: .automatic) { Spacer() }
+            ToolbarItem(placement: .automatic) {
+                Button { model.smartPaste() } label: { Label("Smart Paste", systemImage: "wand.and.stars") }
+                    .help("Paste into the best matching tool (⌘⌥V)")
+            }
+            ToolbarItem(placement: .automatic) {
+                Button { model.showInspector.toggle() } label: { Label("Inspector", systemImage: "sidebar.trailing") }
+                    .help("Show options, history and docs (⌥⌘I)")
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            model.detectClipboardIfNeeded()
+        }
+        .onAppear { model.detectClipboardIfNeeded() }
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+        @Bindable var model = model
+        if let session = model.currentSession {
+            VStack(spacing: 0) {
+                if let report = model.detectionReport { DetectionBanner(report: report) }
+                ToolScreen(session: session)
+                    .id(session.id)
+            }
+            .inspector(isPresented: $model.showInspector) {
+                InspectorView(session: session)
+                    .inspectorColumnWidth(min: Layout.inspectorMin, ideal: Layout.inspectorIdeal, max: Layout.inspectorMax)
+            }
+        } else {
+            ContentUnavailableView("Choose a tool", systemImage: "wrench.and.screwdriver", description: Text("Pick a tool from the sidebar, or paste something and Bitlathe will guess."))
+        }
+    }
+}
+
+/// The tool header already shows the name; keep the window title for Mission Control/Window menu but hide it in the toolbar.
+struct HideToolbarTitle: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 15.0, *) {
+            content.toolbar(removing: .title)
+        } else {
+            content
+        }
+    }
+}
+
+struct DetectionBanner: View {
+    @Environment(AppModel.self) private var model
+    let report: DetectionReport
+
+    var body: some View {
+        HStack(spacing: Space.md) {
+            Image(systemName: "wand.and.stars").foregroundStyle(Palette.accent)
+            if let best = report.best {
+                Text("Clipboard looks like **\(best.score.reason)**").font(.callout)
+                Chip("Open in \(best.tool.name)", symbol: best.tool.symbol) { model.applyDetection(best) }
+                if !report.alsoTry.isEmpty {
+                    Text("Also try").font(.caption).foregroundStyle(.secondary)
+                    ForEach(report.alsoTry) { r in Chip(r.tool.name, tint: .secondary) { model.applyDetection(r) } }
+                }
+            }
+            Spacer()
+            Text(DurationFormatter.ms(report.duration)).font(.caption2.monospacedDigit()).foregroundStyle(.tertiary)
+            Button { model.dismissDetection() } label: { Image(systemName: "xmark") }.buttonStyle(.borderless)
+        }
+        .padding(.horizontal, Space.lg)
+        .padding(.vertical, Space.sm)
+        .background(Palette.accent.opacity(0.08))
+        .overlay(alignment: .bottom) { Divider() }
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+}
+
+struct InspectorView: View {
+    @Bindable var session: ToolSession
+    @State private var history: [HistoryEntry] = []
+    @State private var tab = 0
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Picker("", selection: $tab) {
+                Text("Options").tag(0)
+                Text("History").tag(1)
+                Text("About").tag(2)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .padding(Space.md)
+            Divider()
+            switch tab {
+            case 1:
+                List {
+                    if history.isEmpty { Text("No history yet").foregroundStyle(.secondary) }
+                    ForEach(history) { h in
+                        Button {
+                            session.inputText = h.input
+                            for (k, v) in h.options { session.options[k] = v }
+                        } label: {
+                            VStack(alignment: .leading, spacing: Space.xxs) {
+                                Text(h.input.prefix(120).replacingOccurrences(of: "\n", with: " ")).font(Typography.monoSmall).lineLimit(2)
+                                Text(h.createdAt, style: .relative).font(.caption2).foregroundStyle(.secondary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .task(id: session.runCount) { history = (try? await DataStore.shared.history(toolID: session.tool.id, limit: 50)) ?? [] }
+            case 2:
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Space.md) {
+                        Label(session.tool.name, systemImage: session.tool.symbol).font(Typography.headline)
+                        Text(session.tool.summary).font(.callout)
+                        Text("ID: \(session.tool.id)").font(Typography.captionMono).foregroundStyle(.secondary)
+                        Text("Category: \(session.tool.category.title)").font(.caption).foregroundStyle(.secondary)
+                        if !session.tool.keywords.isEmpty { Text("Keywords: " + session.tool.keywords.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary) }
+                        Text("CLI: bl \(session.tool.id)").font(Typography.captionMono).foregroundStyle(.secondary)
+                        Text("URL: bitlathe://tool/\(session.tool.id)?input=…").font(Typography.captionMono).foregroundStyle(.secondary)
+                    }
+                    .padding(Space.lg)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            default:
+                if session.tool.optionFields.isEmpty {
+                    Text("This tool has no options").foregroundStyle(.secondary).padding().frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    InspectorOptions(session: session)
+                }
+            }
+        }
+        .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
+        .background(Palette.chrome)
+    }
+}

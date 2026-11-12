@@ -6,5 +6,6 @@ import BitlatheUI
 @MainActor
 enum ToolViews {
     static func registerAll() {
+        ToolViewRegistry.register("csv.viewer") { session in AnyView(CSVTableView(session: session)) }
     }
 }

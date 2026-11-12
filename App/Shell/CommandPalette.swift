@@ -140,7 +140,10 @@ struct CommandPalette: View {
         } else {
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
+                    // A plain VStack: the list is small, and LazyVStack reused stale rows (wrong ⌘n badge and
+                    // selection) when the query changed but a row's identity stayed the same.
+                    let indexOf = Dictionary(flat.enumerated().map { ($0.element.id, $0.offset) }, uniquingKeysWith: { a, _ in a })
+                    VStack(alignment: .leading, spacing: 0) {
                         ForEach(sections) { section in
                             Text(section.title)
                                 .font(.caption.weight(.semibold))
@@ -150,7 +153,7 @@ struct CommandPalette: View {
                                 .padding(.bottom, Space.xs)
                                 .accessibilityAddTraits(.isHeader)
                             ForEach(section.items) { item in
-                                let index = flat.firstIndex { $0.id == item.id } ?? 0
+                                let index = indexOf[item.id] ?? 0
                                 PaletteRow(item: item, selected: index == selection, quickPick: index < 9 ? index + 1 : nil)
                                     .id(item.id)
                                     .onTapGesture { run(item) }

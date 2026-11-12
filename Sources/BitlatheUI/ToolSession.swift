@@ -14,6 +14,8 @@ public final class ToolSession: Identifiable {
     /// Non-text input (image, binary, file). Set by drops/opens; cleared when text is edited.
     public var inputPayloadOverride: ToolPayload? { didSet { if inputPayloadOverride != oldValue { scheduleRun(immediate: true) } } }
     public var inputFileName: String?
+    /// Inline message shown in the input pane when a drop or open could not be used.
+    public var inputNotice: String?
     public var options: OptionValues { didSet { if options != oldValue { scheduleRun(immediate: true) } } }
     public var selection = NSRange(location: 0, length: 0)
 
@@ -178,6 +180,7 @@ public final class ToolSession: Identifiable {
     }
 
     public func clear() {
+        inputNotice = nil
         inputText = ""
         secondaryText = ""
         inputPayloadOverride = nil
@@ -210,28 +213,59 @@ public final class ToolSession: Identifiable {
         }
     }
 
+    /// Loads a dropped/opened file according to what this tool takes: images, raw files, or text.
     public func load(urls: [URL]) {
         guard let url = urls.first else { return }
         let accessing = url.startAccessingSecurityScopedResource()
         defer { if accessing { url.stopAccessingSecurityScopedResource() } }
-        guard let data = try? Data(contentsOf: url) else { return }
+        let name = url.lastPathComponent
+        // File and binary tools take the file as-is, without reading it into memory.
+        if tool.io.input == .file || tool.io.input == .binary {
+            inputNotice = nil
+            inputText = ""
+            inputFileName = name
+            inputPayloadOverride = .file(url)
+            return
+        }
+        guard let data = try? Data(contentsOf: url) else {
+            inputNotice = "Couldn't read \(name)."
+            return
+        }
         if urls.count > 1, tool.io.dualInput, let second = try? String(contentsOf: urls[1], encoding: .utf8) {
             secondaryText = second
         }
-        if let f = ImageFormat.sniff(data), f != .svg || tool.io.input == .image {
-            setInput(.image(data, f), name: url.lastPathComponent)
-        } else if tool.io.input == .file {
-            setInput(.file(url), name: url.lastPathComponent)
+        let image = ImageFormat.sniff(data)
+        if let f = image, f != .svg || tool.io.input == .image {
+            if acceptsImages {
+                inputNotice = nil
+                setInput(.image(data, f), name: name)
+            } else {
+                inputNotice = "\(tool.name) works with text, not images. Drop a text file instead."
+            }
+        } else if tool.io.input == .image {
+            inputNotice = "\(name) isn't an image Bitlathe can read."
         } else if let s = String(data: data, encoding: .utf8) {
-            inputFileName = url.lastPathComponent
+            inputNotice = nil
+            inputFileName = name
             inputText = s
         } else {
-            setInput(.data(data), name: url.lastPathComponent)
+            inputNotice = "\(name) isn't a text file, so \(tool.name) can't read it."
+        }
+    }
+
+    /// Image bytes dropped without a file (Safari, screenshots).
+    public func loadDroppedImage(_ data: Data) {
+        guard let f = ImageFormat.sniff(data) ?? (NSImage(data: data) != nil ? .png : nil) else { return }
+        if acceptsImages {
+            inputNotice = nil
+            setInput(.image(data, f), name: "dropped.\(f.fileExtension)")
+        } else {
+            inputNotice = "\(tool.name) works with text, not images."
         }
     }
 
     public func openFile() {
-        let urls = FilePanels.open(multiple: tool.io.dualInput)
+        let urls = FilePanels.open(types: tool.io.input == .image ? [.image] : [.data], multiple: tool.io.dualInput)
         if !urls.isEmpty { load(urls: urls) }
     }
 

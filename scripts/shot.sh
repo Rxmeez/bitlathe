@@ -12,6 +12,7 @@ EXTRA=()
 [[ "${5:-}" == "inspector" ]] && EXTRA=(-BLInspector YES)
 [[ "${5:-}" == "settings" ]] && EXTRA=(-BLSettings YES)
 [[ "${5:-}" == search:* ]] && EXTRA=(-BLSearch "${5#search:}")
+[[ -n "${INPUT_FILE:-}" ]] && EXTRA+=(-BLInputFile "$INPUT_FILE")
 WIN="${WINDOW_TITLE:-}"
 APPEARANCE=()
 [[ -n "${4:-}" ]] && APPEARANCE=(-bl.appearance "$4")

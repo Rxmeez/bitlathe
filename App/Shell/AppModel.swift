@@ -46,6 +46,7 @@ final class AppModel {
                 if tool.samples.indices.contains(idx) { session(for: tool).useSample(tool.samples[idx]) }
             }
             if defaults.bool(forKey: "BLInspector") { showInspector = true }
+            if let path = defaults.string(forKey: "BLInputFile") { session(for: tool).load(urls: [URL(fileURLWithPath: path)]) }
         }
         if let q = defaults.string(forKey: "BLSearch") { searchText = q }
         #endif

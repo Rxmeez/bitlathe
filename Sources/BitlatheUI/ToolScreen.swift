@@ -144,15 +144,17 @@ public struct InputPane: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            PaneTitle(title: session.inputFileName ?? "Input", trailing: {
+            PaneTitle(title: session.inputPayloadOverride == nil ? (session.inputFileName ?? "Input") : "Input", trailing: {
                 if session.tool.io.dualInput { Text("A").font(.caption2.bold()).foregroundStyle(.secondary) }
             })
-            if let override = session.inputPayloadOverride, case .image(let d, _) = override {
-                PayloadImageView(d)
+            if let override = session.inputPayloadOverride, case .image(let d, let f) = override {
+                LoadedImageInput(session: session, data: d, format: f)
             } else if let override = session.inputPayloadOverride, case .file(let url) = override {
-                FileDropSummary(url: url)
+                FileCard(url: url, session: session)
+            } else if session.inputText.isEmpty, [.image, .file, .binary].contains(session.tool.io.input) {
+                DropZone(session: session)
             } else if !session.hasInput, session.inputText.isEmpty, session.tool.io.input != .text || !session.tool.samples.isEmpty || true {
-                ZStack {
+                ZStack(alignment: .top) {
                     CodeEditor(text: $session.inputText, language: session.inputLanguage, isEditable: true,
                                placeholder: "", error: session.error, config: config, selection: $session.selection,
                                onDrop: { session.load(urls: $0) })
@@ -161,8 +163,10 @@ public struct InputPane: View {
                                    onPaste: { session.pasteFromClipboard() }, onSample: { session.useSample($0) })
                             .allowsHitTesting(true)
                     }
+                    if let notice = session.inputNotice { InputNotice(text: notice).padding(Space.sm) }
                 }
             } else {
+                if let notice = session.inputNotice { InputNotice(text: notice).padding(Space.sm) }
                 CodeEditor(text: $session.inputText, language: session.inputLanguage, isEditable: true, placeholder: "",
                            error: session.error, annotations: session.output?.annotations.filter { $0.target == .input } ?? [],
                            config: config, selection: $session.selection, onDrop: { session.load(urls: $0) })
@@ -188,18 +192,7 @@ public struct InputPane: View {
 
 struct FileDropSummary: View {
     let url: URL
-    var body: some View {
-        VStack(spacing: Space.md) {
-            Image(systemName: "doc.fill").font(.system(size: 40)).foregroundStyle(.secondary)
-            Text(url.lastPathComponent).font(.headline)
-            Text(url.deletingLastPathComponent().path).font(.caption).foregroundStyle(.secondary)
-            if let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize {
-                Text(ByteFormatter.string(size)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Palette.editorBackground)
-    }
+    var body: some View { FileCard(url: url, session: nil) }
 }
 
 public struct PaneTitle<Trailing: View>: View {
@@ -309,10 +302,7 @@ struct OutputContent: View {
                 }
             }
         case .data(let d):
-            VStack(spacing: 0) {
-                PaneTitle(title: "\(ByteFormatter.string(d.count)) binary") { EmptyView() }
-                CodeEditor(text: .constant(HexDump.dump(d.prefix(64 * 1024))), language: .hex, isEditable: false, config: config)
-            }
+            BinaryOutputCard(data: d, output: output, session: session, config: config)
         case .file(let url):
             FileDropSummary(url: url)
         case .none:

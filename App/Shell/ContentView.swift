@@ -30,6 +30,7 @@ struct ContentView: View {
                     .help("Show options, history and docs (⌥⌘I)")
             }
         }
+        .overlay { CommandPaletteOverlay() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             model.detectClipboardIfNeeded()
         }

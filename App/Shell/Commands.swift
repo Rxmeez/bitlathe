@@ -16,6 +16,9 @@ struct BitlatheCommands: Commands {
             Button("Smart Paste") { model.smartPaste() }.keyboardShortcut("v", modifiers: [.command, .option])
         }
         CommandMenu("Tool") {
+            Button("Command Palette…") { model.togglePalette() }.keyboardShortcut("k")
+            Button("Go to Tool or Action…") { model.togglePalette() }.keyboardShortcut("p", modifiers: [.command, .shift])
+            Divider()
             Button("Copy Output") { session?.copyOutput() }.keyboardShortcut("c", modifiers: [.command, .shift]).disabled(session?.output == nil)
             Button("Replace Clipboard with Output") { session?.replaceClipboardWithOutput() }.keyboardShortcut("v", modifiers: [.command, .shift]).disabled(session?.output == nil)
             Button("Swap Input and Output") { session?.swapInputOutput() }.keyboardShortcut("s", modifiers: [.command, .shift]).disabled(session?.output == nil)

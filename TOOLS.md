@@ -130,11 +130,11 @@ Tool IDs are stable and used by the CLI (`bl <id>`), URL scheme and Shortcuts.
 |---------|--------|
 | Smart detection + "Also try" | 🚧 |
 | Three-column layout, fuzzy sidebar, Manage Tools | 🚧 |
-| ⌘K palette | ⬜ |
+| ⌘K palette | ✅ |
 | Windows + tabs, state restore | ⬜ |
 | Menu bar Quick Panel + global hotkeys | ⬜ |
 | Services menu | ⬜ |
-| History / favourites / pinned inputs / clipboard history | 🚧 (history, favourites, usage done; pinning UI and clipboard capture pending) |
+| History / favourites / pinned inputs / clipboard history | 🚧 (history, pinned inputs, favourites, usage done; clipboard capture pending) |
 | URL scheme | ⬜ |
 | App Intents | ⬜ |
 | CLI `bl` | 🚧 |
@@ -144,3 +144,13 @@ Tool IDs are stable and used by the CLI (`bl <id>`), URL scheme and Shortcuts.
 | Settings | 🚧 |
 | Onboarding + icon | ⬜ |
 | Distribution (Direct + App Store) | ⬜ |
+
+## Custom views
+| Tool | View |
+|------|------|
+| json.format | Text / collapsible tree with search, copy path & value |
+| regex.test | Pattern bar, flag chips, live highlights, groups table, replace, explain, cheat sheet |
+| text.diff | Side-by-side / unified diff, word-level highlights, folds, change navigation, JSON changes |
+| csv.viewer | Sortable, filterable table, column stats, CSV/JSON export |
+| html.preview / markdown.preview | Sandboxed offline WebKit preview, highlight.js, Mermaid |
+| Image / file / binary tools | Drop zones, image & file cards, binary save cards |

@@ -35,3 +35,10 @@ Format: date · decision · why · consequences.
 - **2026-11-12 · Two app targets, shared sources** for Direct and App Store
   builds; `DIRECT_DISTRIBUTION` compile flag gates Sparkle and the direct CLI
   symlink installer.
+- **2026-11-12 · `com.apple.security.network.client` for WebKit previews (approved by the owner).**
+  Inside the App Sandbox, WKWebView's renderer stays blank without this entitlement, even for
+  `loadHTMLString` with no base URL. The HTML and Markdown previews add a WKContentRuleList that blocks
+  every URL except `about:`, `data:` and `blob:`, cancel all navigation except in-page anchors, and use a
+  non-persistent data store. Verified: previewing HTML that references a remote stylesheet, script,
+  images and an iframe opened no sockets in the app or WebKit's WebContent/Networking processes.
+  Links open in the default browser only on an explicit click.

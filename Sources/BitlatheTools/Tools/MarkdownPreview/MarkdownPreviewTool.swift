@@ -36,7 +36,8 @@ public struct MarkdownPreviewTool: DevTool {
     blockquote { border-left: 4px solid var(--border); margin: 1em 0; padding: .2em 1em; color: var(--muted); }
     table { border-collapse: collapse; margin: 1em 0; } th, td { border: 1px solid var(--border); padding: .4em .8em; text-align: left; } th { background: var(--code); }
     img { max-width: 100%; } hr { border: 0; border-top: 1px solid var(--border); margin: 2em 0; }
-    ul.contains-task-list { list-style: none; padding-left: .4em; } input[type=checkbox] { margin-right: .5em; }
+    ul.contains-task-list, li:has(> input[type=checkbox]) { list-style: none; } ul:has(> li > input[type=checkbox]) { padding-left: 1.2em; } input[type=checkbox] { margin: 0 .5em 0 -1.2em; }
+    pre code.hljs, .hljs { background: transparent !important; padding: 0 !important; }
     .mermaid { background: var(--code); border-radius: 10px; padding: 12px; text-align: center; } kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 .35em; font-size: .85em; }
     """
 

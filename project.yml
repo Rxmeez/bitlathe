@@ -46,6 +46,9 @@ targets:
         com.apple.security.app-sandbox: true
         com.apple.security.files.user-selected.read-write: true
         com.apple.security.files.bookmarks.app-scope: true
+        # Required by WebKit's renderer process inside the App Sandbox, even for local HTML.
+        # Every remote load is blocked by the previews' content rule list; see Docs/Decisions.md.
+        com.apple.security.network.client: true
         com.apple.security.print: true
     info:
       path: App/Info.plist

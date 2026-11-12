@@ -12,6 +12,8 @@ EXTRA=()
 [[ "${5:-}" == "inspector" ]] && EXTRA=(-BLInspector YES)
 [[ "${5:-}" == "settings" ]] && EXTRA=(-BLSettings YES)
 [[ "${5:-}" == search:* ]] && EXTRA=(-BLSearch "${5#search:}")
+[[ -n "${INSPECTOR_TAB:-}" ]] && EXTRA+=(-BLInspectorTab "$INSPECTOR_TAB")
+[[ -n "${SEED_HISTORY:-}" ]] && EXTRA+=(-BLSeedHistory YES)
 WIN="${WINDOW_TITLE:-}"
 APPEARANCE=()
 [[ -n "${4:-}" ]] && APPEARANCE=(-bl.appearance "$4")

@@ -46,6 +46,8 @@ final class AppModel {
                 if tool.samples.indices.contains(idx) { session(for: tool).useSample(tool.samples[idx]) }
             }
             if defaults.bool(forKey: "BLInspector") { showInspector = true }
+            switch defaults.string(forKey: "BLInspectorTab") { case "history": debugInspectorTab = 1; case "about": debugInspectorTab = 2; default: break }
+            if defaults.bool(forKey: "BLSeedHistory") { Self.seedHistory(for: tool) }
         }
         if let q = defaults.string(forKey: "BLSearch") { searchText = q }
         #endif
@@ -53,6 +55,39 @@ final class AppModel {
             Task { @MainActor in await self?.refreshUsage() }
         }
     }
+
+    /// DEBUG screenshot harness only: which inspector tab to open on.
+    var debugInspectorTab = 0
+
+    #if DEBUG
+    private static func seedHistory(for tool: AnyTool) {
+        Task {
+            try? await DataStore.shared.clearHistory(toolID: tool.id, includePinned: true)
+            let base = tool.samples.map { ($0.input, $0.options) }
+            var seeds = base
+            if let first = base.first {
+                let lines = first.0.split(separator: "\n").map(String.init)
+                if lines.count > 2 { seeds.append((lines.dropLast().joined(separator: "\n"), first.1)) }
+                seeds.append((String(first.0.prefix(max(8, first.0.count / 2))), first.1))
+            }
+            let field = tool.optionFields.first { if case .toggle = $0.kind { return true } else if case .picker = $0.kind { return true } else { return false } }
+            for (i, seed) in seeds.enumerated() {
+                var opts = seed.1
+                if i == 1, let f = field {
+                    switch f.kind {
+                    case .toggle: opts[f.key] = .bool(!f.defaultValue.boolValue)
+                    case .picker(let cs): if let c = cs.first(where: { .string($0.value) != f.defaultValue }) { opts[f.key] = .string(c.value) }
+                    default: break
+                    }
+                }
+                try? await DataStore.shared.addHistory(toolID: tool.id, input: seed.0, options: opts)
+            }
+            if let e = try? await DataStore.shared.history(toolID: tool.id, limit: 50).last {
+                try? await DataStore.shared.setPinned(e.id, true, title: "Saved example")
+            }
+        }
+    }
+    #endif
 
     var selectedTool: AnyTool? { selectedToolID.flatMap { registry.tool($0) } }
 

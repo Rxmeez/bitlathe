@@ -53,7 +53,10 @@ public final class ToolRegistry {
         guard !q.isEmpty else { return tools }
         return tools
             .compactMap { tool -> (AnyTool, Int)? in
-                guard let score = Fuzzy.score(query: q, in: tool.name, secondary: tool.searchText) else { return nil }
+                guard var score = Fuzzy.score(query: q, in: tool.name, secondary: tool.searchText) else { return nil }
+                // A tool whose id starts with the query ("json" → json.format) is the canonical tool for that word,
+                // so it outranks tools that merely mention it (JSON ⇄ CSV, YAML ⇄ JSON…).
+                if tool.id.lowercased().hasPrefix(q.lowercased() + ".") { score += 100 }
                 return (tool, score)
             }
             .sorted { $0.1 > $1.1 }

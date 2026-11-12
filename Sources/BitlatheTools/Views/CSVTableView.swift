@@ -526,9 +526,10 @@ struct CSVNSTable: NSViewRepresentable {
         tv.allowsMultipleSelection = true
         tv.allowsColumnReordering = true
         tv.allowsColumnResizing = true
-        tv.columnAutoresizingStyle = .noColumnAutoresizing
+        // Last column absorbs spare width; wider files scroll horizontally.
+        tv.columnAutoresizingStyle = .lastColumnOnlyAutoresizingStyle
         tv.rowHeight = Space.xl - Space.xxs
-        tv.intercellSpacing = NSSize(width: 0, height: 0)
+        tv.intercellSpacing = NSSize(width: Space.md, height: 0)
         tv.dataSource = context.coordinator
         tv.delegate = context.coordinator
         tv.menuProvider = { [weak c = context.coordinator] in c?.rowMenu() }
@@ -607,10 +608,15 @@ struct CSVNSTable: NSViewRepresentable {
                 let col = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("c\(c)"))
                 col.title = name
                 col.sortDescriptorPrototype = NSSortDescriptor(key: "c\(c)", ascending: true)
-                let longest = sample.reduce(0) { max($0, c < $1.count ? $1[c].count : 0) }
-                let perChar: CGFloat = isNumeric(c) ? 7.4 : 6.6
-                let widest = max(CGFloat(longest) * perChar, CGFloat(name.count) * 7.2 + Space.xl)
-                col.width = min(max(widest + Space.xl, 80), 360)
+                // Measure with the fonts the cells and header actually use.
+                let cellFont: NSFont = isNumeric(c) ? .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular) : .systemFont(ofSize: NSFont.systemFontSize)
+                let headerFont = NSFont.systemFont(ofSize: NSFont.systemFontSize, weight: .medium)
+                let longestCell = sample.reduce(CGFloat(0)) { acc, row in
+                    guard c < row.count else { return acc }
+                    return max(acc, (row[c] as NSString).size(withAttributes: [.font: cellFont]).width)
+                }
+                let headerWidth = (name as NSString).size(withAttributes: [.font: headerFont]).width + Space.xl   // room for the sort arrow
+                col.width = min(max(max(longestCell, headerWidth) + Space.lg, 72), 360)
                 col.minWidth = 48
                 col.maxWidth = 1200
                 col.headerCell.alignment = isNumeric(c) ? .right : .left

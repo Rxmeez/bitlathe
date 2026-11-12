@@ -108,6 +108,11 @@ public struct CodeEditor: NSViewRepresentable {
         scroll.contentView.postsFrameChangedNotifications = true
         NotificationCenter.default.addObserver(context.coordinator, selector: #selector(Coordinator.clipFrameChanged(_:)),
                                                name: NSView.frameDidChangeNotification, object: scroll.contentView)
+        // A wrapping editor must never be scrolled sideways: programmatic text changes and caret moves can
+        // otherwise leave the clip view offset so the first columns hide under the line-number ruler.
+        scroll.contentView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(context.coordinator, selector: #selector(Coordinator.clipFrameChanged(_:)),
+                                               name: NSView.boundsDidChangeNotification, object: scroll.contentView)
         return scroll
     }
 
@@ -162,6 +167,9 @@ public struct CodeEditor: NSViewRepresentable {
                 let sel = tv.selectedRange()
                 tv.textStorage?.setAttributedString(NSAttributedString(string: p.text, attributes: tv.typingAttributes))
                 ruler?.invalidateLineIndex()
+                if p.config.wrap, let clip = tv.enclosingScrollView?.contentView, clip.bounds.origin.x != -clip.contentInsets.left {
+                    clip.scroll(to: NSPoint(x: -clip.contentInsets.left, y: clip.bounds.origin.y))
+                }
                 let newLen = (p.text as NSString).length
                 tv.setSelectedRange(NSRange(location: min(sel.location, newLen), length: 0))
                 highlightNow()
@@ -185,24 +193,32 @@ public struct CodeEditor: NSViewRepresentable {
             return ps
         }
 
-        /// Keep a wrapping text view exactly as wide as the visible clip area and pinned to x = 0,
-        /// otherwise the first columns slide under the line-number ruler.
+        /// Keep a wrapping text view exactly as wide as the visible text area and scrolled fully left.
+        /// On macOS 14+ the scroll view makes room for the line-number ruler with a content inset, so "fully left"
+        /// is x = -contentInsets.left (not 0); forcing 0 slides the first columns underneath the ruler.
         @objc func clipFrameChanged(_ note: Notification) {
             guard parent.config.wrap, let tv = textView, let clip = tv.enclosingScrollView?.contentView else { return }
-            let width = clip.bounds.width
-            if abs(tv.frame.width - width) > 0.5 { tv.setFrameSize(NSSize(width: width, height: tv.frame.height)) }
-            if clip.bounds.origin.x != 0 { clip.scroll(to: NSPoint(x: 0, y: clip.bounds.origin.y)); tv.enclosingScrollView?.reflectScrolledClipView(clip) }
+            let insets = clip.contentInsets
+            let width = clip.bounds.width - insets.left - insets.right
+            if width > 0, abs(tv.frame.width - width) > 0.5 { tv.setFrameSize(NSSize(width: width, height: tv.frame.height)) }
+            let minX = -insets.left
+            if abs(clip.bounds.origin.x - minX) > 0.5 {
+                clip.scroll(to: NSPoint(x: minX, y: clip.bounds.origin.y))
+                tv.enclosingScrollView?.reflectScrolledClipView(clip)
+            }
         }
 
         private func setWrap(_ wrap: Bool, _ tv: NSTextView) {
             guard let container = tv.textContainer, let scroll = tv.enclosingScrollView else { return }
             scroll.hasHorizontalScroller = !wrap
+            defer { scroll.tile() }
             if wrap {
                 tv.isHorizontallyResizable = false
                 tv.autoresizingMask = [.width]
                 container.widthTracksTextView = true
-                tv.setFrameSize(NSSize(width: scroll.contentView.bounds.width, height: tv.frame.height))
-                scroll.contentView.scroll(to: NSPoint(x: 0, y: scroll.contentView.bounds.origin.y))
+                let clip = scroll.contentView
+                tv.setFrameSize(NSSize(width: max(clip.bounds.width - clip.contentInsets.left - clip.contentInsets.right, 1), height: tv.frame.height))
+                clip.scroll(to: NSPoint(x: -clip.contentInsets.left, y: clip.bounds.origin.y))
             } else {
                 container.widthTracksTextView = false
                 container.containerSize = CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
@@ -430,7 +446,12 @@ public final class LineNumberRulerView: NSRulerView {
         lineIndexValid = true
         let digits = max(2, String(starts.count).count)
         let width = CGFloat(digits) * ("0" as NSString).size(withAttributes: [.font: font]).width + Space.lg
-        if abs(width - ruleThickness) > 1 { ruleThickness = width }
+        if abs(width - ruleThickness) > 1 {
+            ruleThickness = width
+            // AppKit doesn't re-lay out the clip view when the ruler's thickness changes; without this the text
+            // keeps its old origin and its first columns end up underneath the ruler.
+            scrollView?.tile()
+        }
     }
 
     private func lineNumber(for charIndex: Int) -> Int {

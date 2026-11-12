@@ -319,14 +319,19 @@ struct KeyValueRow: View {
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
         let label = Text(row.label).foregroundStyle(.secondary)
+        let swatch = KeyValueRow.colour(row.value)
         HStack(alignment: .firstTextBaseline, spacing: Space.md) {
             if wide {
                 label.font(.callout).frame(width: 170, alignment: .leading)
+                if let swatch { SwatchDot(color: swatch) }
                 value
             } else {
                 VStack(alignment: .leading, spacing: Space.xxs) {
                     label.font(.caption)
-                    value
+                    HStack(spacing: Space.sm) {
+                        if let swatch { SwatchDot(color: swatch) }
+                        value
+                    }
                 }
             }
             Button { Clipboard.copy(row.value) } label: { Image(systemName: "doc.on.doc") }
@@ -343,6 +348,17 @@ struct KeyValueRow: View {
         .onHover { hovering = $0 }
         .contextMenu { Button("Copy \(row.label)") { Clipboard.copy(row.value) } }
         .accessibilityElement(children: .combine)
+    }
+
+    /// A value that is exactly a hex colour gets a swatch.
+    static func colour(_ s: String) -> Color? {
+        let t = s.trimmingCharacters(in: .whitespaces)
+        guard t.hasPrefix("#"), [4, 7, 9].contains(t.count), let v = UInt32(t.dropFirst(), radix: 16) else { return nil }
+        let hex = t.count == 4 ? t.dropFirst().map { "\($0)\($0)" }.joined() : String(t.dropFirst())
+        guard let full = UInt32(hex.prefix(6), radix: 16) else { return nil }
+        _ = v
+        let a = hex.count == 8 ? Double(UInt32(hex.suffix(2), radix: 16) ?? 255) / 255 : 1
+        return Color(.sRGB, red: Double((full >> 16) & 0xFF) / 255, green: Double((full >> 8) & 0xFF) / 255, blue: Double(full & 0xFF) / 255, opacity: a)
     }
 
     var color: Color {
@@ -481,18 +497,50 @@ public enum FilePanels {
 
 public struct PayloadImageView: View {
     let data: Data
+    @State private var actualSize = false
     public init(_ data: Data) { self.data = data }
+
     public var body: some View {
-        if let img = NSImage(data: data) {
-            ScrollView([.horizontal, .vertical]) {
-                Image(nsImage: img)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: 1200, maxHeight: 1200)
-                    .padding(Space.lg)
-                    .background(CheckerboardBackground())
+        if let img = NSImage(data: data), let rep = img.representations.first {
+            let px = CGSize(width: max(rep.pixelsWide, 1), height: max(rep.pixelsHigh, 1))
+            VStack(spacing: 0) {
+                GeometryReader { geo in
+                    let avail = CGSize(width: max(geo.size.width - Space.xl * 2, 1), height: max(geo.size.height - Space.xl * 2, 1))
+                    let fitScale = min(avail.width / px.width, avail.height / px.height)
+                    // Retina: one image pixel per screen point is "actual size" for pixel-exact output like QR codes.
+                    let scale = actualSize ? 1.0 : fitScale
+                    let size = CGSize(width: px.width * scale, height: px.height * scale)
+                    ScrollView([.horizontal, .vertical]) {
+                        Image(nsImage: img)
+                            .resizable()
+                            .interpolation(scale >= 1 ? .none : .high)
+                            .frame(width: size.width, height: size.height)
+                            .background(CheckerboardBackground())
+                            .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
+                            .padding(Space.xl)
+                            .frame(minWidth: geo.size.width, minHeight: geo.size.height)
+                    }
+                    .scrollDisabled(!actualSize)
+                }
+                HStack(spacing: Space.sm) {
+                    Text("\(Int(px.width)) × \(Int(px.height)) px")
+                        .lineLimit(1)
+                        .fixedSize()
+                    Spacer(minLength: Space.sm)
+                    Button { actualSize.toggle() } label: {
+                        Image(systemName: actualSize ? "arrow.down.right.and.arrow.up.left" : "1.magnifyingglass")
+                    }
+                    .buttonStyle(.borderless)
+                    .help(actualSize ? "Fit to pane" : "Actual size (1 image pixel per point)")
+                    .accessibilityLabel(actualSize ? "Fit to pane" : "Show actual size")
+                }
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, Space.md)
+                .padding(.vertical, Space.xs + 1)
+                .background(Palette.paneTitle)
+                .overlay(alignment: .top) { Divider() }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Palette.editorBackground)
         } else {
             ContentUnavailableView("Unsupported image", systemImage: "photo.badge.exclamationmark")

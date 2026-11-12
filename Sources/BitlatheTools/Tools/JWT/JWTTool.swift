@@ -105,7 +105,7 @@ public struct JWTTool: DevTool {
                 case "exp", "nbf", "iat", "auth_time", "updated_at":
                     value = "\(XMLJSON.scalar(v)) → \(Self.describeTime(v))"
                     if k == "exp", let t = v.doubleValue {
-                        if t < now { value += "  ⚠️ EXPIRED"; validity = false; warnings.append("Token expired \(UnixTimeTool.relative(Date(timeIntervalSince1970: t)))") }
+                        if t < now { value += "  ⚠️ EXPIRED"; warnings.append("Token expired \(UnixTimeTool.relative(Date(timeIntervalSince1970: t)))") }
                         else { value += "  ⏳ expires in \(UnitConverterTool.human(seconds: t - now))" }
                     }
                     if k == "nbf", let t = v.doubleValue, t > now + 60 { warnings.append("Token is not valid yet (nbf is in the future)") }
@@ -134,7 +134,7 @@ public struct JWTTool: DevTool {
         if let v = verified {
             rows.insert(MetaRow("Signature check", v ? "Valid — signed with the provided \(alg.hasPrefix("HS") ? "secret" : "key")" : "INVALID — does not match", style: v ? .success : .danger), at: 1)
             if !v { warnings.insert("Signature verification failed", at: 0) }
-            validity = (validity ?? true) && v
+            validity = v
         } else if alg != "none" {
             rows.insert(MetaRow("Signature check", alg.hasPrefix("HS") ? "Enter the secret to verify" : "Paste the public key (PEM or JWK) to verify", style: .muted), at: 1)
         }

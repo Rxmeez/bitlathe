@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 APP=".build/DerivedData/Build/Products/Debug/Bitlathe.app"
-pkill -x Bitlathe 2>/dev/null || true; sleep 0.5
+pkill -x Bitlathe 2>/dev/null || true; while pgrep -x Bitlathe >/dev/null; do sleep 0.2; done; sleep 0.3
 EXTRA=()
 [[ "${5:-}" == "inspector" ]] && EXTRA=(-BLInspector YES)
 [[ "${5:-}" == "settings" ]] && EXTRA=(-BLSettings YES)

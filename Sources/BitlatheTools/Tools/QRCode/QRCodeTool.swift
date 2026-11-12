@@ -75,14 +75,17 @@ public struct QRCodeTool: DevTool {
 
     public static func png(_ m: [[Bool]], foreground: RGBA, background: RGBA?, quiet: Int, size: Int, logo: CGImage?) throws -> Data {
         let n = m.count + quiet * 2
+        // Whole-pixel modules keep the code sharp; the leftover pixels widen the quiet zone so the
+        // image is exactly the size the user asked for.
         let scale = max(1, size / n)
-        let px = n * scale
+        let px = max(size, n * scale)
+        let offset = (px - m.count * scale) / 2
         guard let ctx = ImageRender.context(width: px, height: px) else { throw ToolError("Render failure") }
         if let bg = background { ctx.setFillColor(ImageRender.cgColor(bg)); ctx.fill(CGRect(x: 0, y: 0, width: px, height: px)) }
         ctx.setFillColor(ImageRender.cgColor(foreground))
         for (y, row) in m.enumerated() {
             for (x, on) in row.enumerated() where on {
-                ctx.fill(CGRect(x: (x + quiet) * scale, y: px - (y + quiet + 1) * scale, width: scale, height: scale))
+                ctx.fill(CGRect(x: offset + x * scale, y: px - offset - (y + 1) * scale, width: scale, height: scale))
             }
         }
         if let logo {

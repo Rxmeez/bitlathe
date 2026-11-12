@@ -278,10 +278,22 @@ struct OutputContent: View {
     var body: some View {
         switch payload {
         case .image(let d, _):
-            PayloadImageView(d)
+            VStack(spacing: 0) {
+                PayloadImageView(d)
+                if !output.metadata.isEmpty {
+                    Divider()
+                    MetadataStrip(rows: Array(output.metadata.prefix(6)))
+                }
+            }
         case .text(let t):
             if t.isEmpty, !output.metadata.isEmpty {
                 KeyValueList(output.metadata)
+            } else if !t.contains("\n"), t.count <= 120, output.metadata.count > 6, session.selectedFacet == nil {
+                VStack(spacing: 0) {
+                    ResultHeader(text: t)
+                    Divider()
+                    KeyValueList(output.metadata)
+                }
             } else {
                 VStack(spacing: 0) {
                     CodeEditor(text: .constant(t), language: session.outputLanguage, isEditable: false,
@@ -414,5 +426,28 @@ public struct MetadataStrip: View {
         case .muted: .secondary
         default: .primary
         }
+    }
+}
+
+/// The primary result of a tool shown large, above its details.
+struct ResultHeader: View {
+    let text: String
+    var body: some View {
+        HStack(spacing: Space.md) {
+            if let c = KeyValueRow.colour(text) { SwatchDot(color: c, size: 44) }
+            Text(text)
+                .font(.system(size: 22, weight: .medium, design: .monospaced))
+                .textSelection(.enabled)
+                .lineLimit(2)
+            Spacer()
+            Button { Clipboard.copy(text) } label: { Image(systemName: "doc.on.doc") }
+                .buttonStyle(.borderless)
+                .help("Copy result")
+                .accessibilityLabel("Copy result")
+        }
+        .padding(.horizontal, Space.lg)
+        .padding(.vertical, Space.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Palette.editorBackground)
     }
 }

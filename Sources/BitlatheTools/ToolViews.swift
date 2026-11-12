@@ -9,5 +9,6 @@ enum ToolViews {
         ToolViewRegistry.register(RegexTool.id) { session in AnyView(RegexView(session: session)) }
         JSONTreeViewRegistration.register()
         DiffToolViewRegistration.register()
+        ToolViewRegistry.register("csv.viewer") { session in AnyView(CSVTableView(session: session)) }
     }
 }

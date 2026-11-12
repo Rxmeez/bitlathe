@@ -50,6 +50,7 @@ final class AppModel {
             if defaults.bool(forKey: "BLInspector") { showInspector = true }
             switch defaults.string(forKey: "BLInspectorTab") { case "history": debugInspectorTab = 1; case "about": debugInspectorTab = 2; default: break }
             if defaults.bool(forKey: "BLSeedHistory") { Self.seedHistory(for: tool) }
+            if let path = defaults.string(forKey: "BLInputFile") { session(for: tool).load(urls: [URL(fileURLWithPath: path)]) }
         }
         if let q = defaults.string(forKey: "BLSearch") { searchText = q }
         if defaults.bool(forKey: "BLPalette") { showPalette = true }

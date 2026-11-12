@@ -17,6 +17,7 @@ EXTRA=()
 [[ -n "${BL_SECONDARY:-}" ]] && EXTRA+=(-BLSecondary "$BL_SECONDARY")
 [[ -n "${INSPECTOR_TAB:-}" ]] && EXTRA+=(-BLInspectorTab "$INSPECTOR_TAB")
 [[ -n "${SEED_HISTORY:-}" ]] && EXTRA+=(-BLSeedHistory YES)
+[[ -n "${INPUT_FILE:-}" ]] && EXTRA+=(-BLInputFile "$INPUT_FILE")
 WIN="${WINDOW_TITLE:-}"
 APPEARANCE=()
 [[ -n "${4:-}" ]] && APPEARANCE=(-bl.appearance "$4")

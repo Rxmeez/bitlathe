@@ -39,6 +39,7 @@ struct BitlatheCommands: Commands {
             Button("Actual Size") { Settings.shared.resetZoom() }.keyboardShortcut("0")
         }
         CommandGroup(replacing: .help) {
+            Button("Show Welcome…") { OnboardingController.shared.isPresented = true } // onboarding
             Button("Bitlathe Help") { if let u = URL(string: "https://github.com/bitlathe/bitlathe#readme") { NSWorkspace.shared.open(u) } }
         }
     }

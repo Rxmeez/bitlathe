@@ -36,7 +36,7 @@ public struct FakeDataTool: DevTool {
     public init() {}
 
     struct Locale: @unchecked Sendable {
-        var first: [String], last: [String], cities: [String], streets: [String], countries: [(String, String)], domains: [String], postcode: @Sendable () -> String
+        var first: [String], last: [String], cities: [String], streets: [String], countries: [(String, String)], domains: [String], postcode: @Sendable (inout Gen) -> String
     }
 
     static let en = Locale(first: ["Ada", "Grace", "Alan", "Linus", "Margaret", "Dennis", "Barbara", "Ken", "Hedy", "Tim", "Radia", "Guido", "Katherine", "James", "Annie", "Bjarne", "Frances", "Brendan", "Joan", "Yukihiro", "Lynn", "Donald", "Mary", "Edsger", "Evelyn", "Niklaus", "Sophie", "Anders", "Priya", "Omar", "Mei", "Lucas", "Amara", "Noah", "Zara", "Ethan", "Leila", "Mateo", "Ines", "Kwame"],
@@ -45,31 +45,31 @@ public struct FakeDataTool: DevTool {
                            streets: ["High Street", "Station Road", "Main Street", "Church Lane", "Park Avenue", "Victoria Road", "Mill Lane", "King Street", "Queen's Road", "Market Place", "Oak Drive", "Maple Court", "Harbour View", "Castle Hill", "Elm Grove"],
                            countries: [("United Kingdom", "GB"), ("United States", "US"), ("Canada", "CA"), ("Australia", "AU"), ("Ireland", "IE"), ("New Zealand", "NZ")],
                            domains: ["example.com", "example.org", "mail.test", "bitlathe.dev", "acme.io", "northwind.co", "globex.net"],
-                           postcode: { String(format: "%@%d %d%@%@", ["SW", "EC", "M", "EH", "BS", "LS"].randomElement()!, Int.random(in: 1...20), Int.random(in: 1...9), String(UnicodeScalar(UInt8.random(in: 65...90))), String(UnicodeScalar(UInt8.random(in: 65...90)))) })   // swiftlint:disable:this force_unwrapping
+                           postcode: { g in String(format: "%@%d %d%@%@", g.pick(["SW", "EC", "M", "EH", "BS", "LS"]), g.int(1...20), g.int(1...9), String(UnicodeScalar(UInt8(g.int(65...90)))), String(UnicodeScalar(UInt8(g.int(65...90))))) })
     static let de = Locale(first: ["Anna", "Lukas", "Lena", "Felix", "Mia", "Jonas", "Emma", "Paul", "Sophie", "Leon", "Hannah", "Max", "Lea", "Noah", "Marie", "Finn", "Laura", "Elias", "Julia", "Ben"],
                            last: ["Müller", "Schmidt", "Schneider", "Fischer", "Weber", "Meyer", "Wagner", "Becker", "Schulz", "Hoffmann", "Koch", "Richter", "Klein", "Wolf", "Schröder", "Neumann", "Braun", "Zimmermann", "Krüger", "Hartmann"],
                            cities: ["Berlin", "Hamburg", "München", "Köln", "Frankfurt", "Stuttgart", "Düsseldorf", "Leipzig", "Dresden", "Bremen", "Hannover", "Nürnberg"],
                            streets: ["Hauptstraße", "Bahnhofstraße", "Gartenstraße", "Schulstraße", "Dorfstraße", "Bergstraße", "Lindenweg", "Kirchplatz", "Am Markt", "Rosenweg"],
                            countries: [("Deutschland", "DE"), ("Österreich", "AT"), ("Schweiz", "CH")], domains: ["beispiel.de", "mail.de", "firma.at", "example.ch"],
-                           postcode: { String(format: "%05d", Int.random(in: 10115...99998)) })
+                           postcode: { g in String(format: "%05d", g.int(10115...99998)) })
     static let fr = Locale(first: ["Camille", "Louis", "Chloé", "Hugo", "Manon", "Lucas", "Léa", "Gabriel", "Inès", "Arthur", "Jade", "Raphaël", "Zoé", "Jules", "Louise", "Adam", "Alice", "Nathan", "Eva", "Tom"],
                            last: ["Martin", "Bernard", "Thomas", "Petit", "Robert", "Richard", "Durand", "Dubois", "Moreau", "Laurent", "Simon", "Michel", "Lefebvre", "Leroy", "Roux", "David", "Bertrand", "Morel", "Fournier", "Girard"],
                            cities: ["Paris", "Lyon", "Marseille", "Toulouse", "Nice", "Nantes", "Strasbourg", "Montpellier", "Bordeaux", "Lille", "Rennes", "Grenoble"],
                            streets: ["Rue de la Paix", "Avenue Victor Hugo", "Rue de la République", "Boulevard Saint-Michel", "Rue des Lilas", "Place du Marché", "Chemin des Vignes", "Rue Pasteur", "Allée des Roses", "Quai des Belges"],
                            countries: [("France", "FR"), ("Belgique", "BE"), ("Suisse", "CH")], domains: ["exemple.fr", "courrier.fr", "societe.be", "example.ch"],
-                           postcode: { String(format: "%05d", Int.random(in: 1000...95999)) })
+                           postcode: { g in String(format: "%05d", g.int(1000...95999)) })
     static let es = Locale(first: ["Lucía", "Hugo", "Sofía", "Martín", "Martina", "Lucas", "María", "Mateo", "Julia", "Leo", "Paula", "Daniel", "Valeria", "Alejandro", "Emma", "Pablo", "Carla", "Manuel", "Sara", "Álvaro"],
                            last: ["García", "Rodríguez", "González", "Fernández", "López", "Martínez", "Sánchez", "Pérez", "Gómez", "Martín", "Jiménez", "Ruiz", "Hernández", "Díaz", "Moreno", "Muñoz", "Álvarez", "Romero", "Alonso", "Gutiérrez"],
                            cities: ["Madrid", "Barcelona", "Valencia", "Sevilla", "Zaragoza", "Málaga", "Bilbao", "Murcia", "Palma", "Granada", "Ciudad de México", "Bogotá", "Buenos Aires", "Lima"],
                            streets: ["Calle Mayor", "Avenida de la Constitución", "Calle Real", "Paseo de la Castellana", "Plaza de España", "Calle del Sol", "Camino Viejo", "Ronda de Toledo", "Calle Luna", "Avenida del Puerto"],
                            countries: [("España", "ES"), ("México", "MX"), ("Argentina", "AR"), ("Colombia", "CO")], domains: ["ejemplo.es", "correo.es", "empresa.mx", "example.ar"],
-                           postcode: { String(format: "%05d", Int.random(in: 1001...52999)) })
+                           postcode: { g in String(format: "%05d", g.int(1001...52999)) })
     static let jp = Locale(first: ["Haruto", "Yui", "Sota", "Aoi", "Yuto", "Hina", "Ren", "Sakura", "Riku", "Mei", "Hinata", "Akari", "Kaito", "Rin", "Yamato", "Himari", "Asahi", "Koharu", "Minato", "Tsumugi"],
                            last: ["Sato", "Suzuki", "Takahashi", "Tanaka", "Watanabe", "Ito", "Yamamoto", "Nakamura", "Kobayashi", "Kato", "Yoshida", "Yamada", "Sasaki", "Yamaguchi", "Matsumoto", "Inoue", "Kimura", "Hayashi", "Shimizu", "Saito"],
                            cities: ["Tokyo", "Osaka", "Kyoto", "Yokohama", "Nagoya", "Sapporo", "Fukuoka", "Kobe", "Sendai", "Hiroshima"],
                            streets: ["1-chome Ginza", "2-chome Shibuya", "3-chome Umeda", "4-chome Namba", "5-chome Sakae", "Nakamachi 2-1", "Honmachi 3-5", "Ekimae-dori 7", "Sakuradori 12", "Minatomirai 1"],
                            countries: [("Japan", "JP")], domains: ["example.jp", "mail.co.jp", "kaisha.jp"],
-                           postcode: { String(format: "%03d-%04d", Int.random(in: 100...999), Int.random(in: 0...9999)) })
+                           postcode: { g in String(format: "%03d-%04d", g.int(100...999), g.int(0...9999)) })
 
     static let companies = ["Acme", "Globex", "Initech", "Umbrella", "Hooli", "Vandelay", "Stark", "Wayne", "Wonka", "Tyrell", "Cyberdyne", "Aperture", "Massive Dynamic", "Soylent", "Oscorp", "Pied Piper", "Dunder Mifflin", "Sterling Cooper", "Bluth", "Prestige Worldwide"]
     static let suffixes = ["Ltd", "Inc", "GmbH", "LLC", "Labs", "Studio", "Systems", "Group", "Co", "Technologies"]
@@ -128,7 +128,7 @@ public struct FakeDataTool: DevTool {
         case "phone": return .string("+\(g.pick([1, 44, 49, 33, 34, 81])) \(g.digits(3)) \(g.digits(3)) \(g.digits(4))")
         case "street": return .string("\(g.int(1...240)) \(g.pick(l.streets))")
         case "city": return .string(g.pick(l.cities))
-        case "postcode": return .string(l.postcode())
+        case "postcode": return .string(l.postcode(&g))
         case "country": return .string(g.pick(l.countries).0)
         case "countryCode": return .string(g.pick(l.countries).1)
         case "company": return .string("\(g.pick(companies)) \(g.pick(suffixes))")
@@ -156,7 +156,7 @@ public struct FakeDataTool: DevTool {
         case "userAgent": return .string(g.pick(UserAgentTool.samples).input)
         case "date": return .string(Self.date(g.int(0...(365 * 5)), &g).prefix(10).description)
         case "dateTime": return .string(Self.date(g.int(0...(365 * 5)), &g))
-        case "timestamp": return .number(Int(Date().timeIntervalSince1970) - g.int(0...(86400 * 365 * 5)))
+        case "timestamp": return .number(Int(anchor.timeIntervalSince1970) - g.int(0...(86400 * 365 * 5)))
         case "birthdate": return .string(Self.date(g.int(365 * 18...365 * 80), &g).prefix(10).description)
         case "age": return .number(g.int(18...80))
         case "boolean": return .bool(g.int(0...1) == 1)
@@ -177,8 +177,11 @@ public struct FakeDataTool: DevTool {
         }
     }
 
+    /// "Now" for relative dates, truncated to the start of the UTC day so the same seed gives the same data all day.
+    static var anchor: Date { Date(timeIntervalSince1970: (Date().timeIntervalSince1970 / 86_400).rounded(.down) * 86_400) }
+
     static func date(_ daysAgo: Int, _ g: inout Gen) -> String {
-        let d = Date().addingTimeInterval(-Double(daysAgo) * 86400 - Double(g.int(0...86399)))
+        let d = anchor.addingTimeInterval(-Double(daysAgo) * 86400 - Double(g.int(0...86399)))
         let f = ISO8601DateFormatter()
         return f.string(from: d)
     }

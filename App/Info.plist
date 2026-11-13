@@ -45,5 +45,65 @@
 	<string></string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Bitlathe: Format JSON</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>formatJSON</string>
+			<key>NSPortName</key>
+			<string>Bitlathe</string>
+			<key>NSReturnTypes</key>
+			<array>
+				<string>NSStringPboardType</string>
+			</array>
+			<key>NSSendTypes</key>
+			<array>
+				<string>NSStringPboardType</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Bitlathe: Decode Base64</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>decodeBase64</string>
+			<key>NSPortName</key>
+			<string>Bitlathe</string>
+			<key>NSReturnTypes</key>
+			<array>
+				<string>NSStringPboardType</string>
+			</array>
+			<key>NSSendTypes</key>
+			<array>
+				<string>NSStringPboardType</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Bitlathe: Smart Transform</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>smartTransform</string>
+			<key>NSPortName</key>
+			<string>Bitlathe</string>
+			<key>NSReturnTypes</key>
+			<array>
+				<string>NSStringPboardType</string>
+			</array>
+			<key>NSSendTypes</key>
+			<array>
+				<string>NSStringPboardType</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

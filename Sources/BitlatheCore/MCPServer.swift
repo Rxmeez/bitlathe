@@ -84,8 +84,8 @@ public struct MCPServer: Sendable {
                    "Recognise text (JSON, JWT, timestamp, URL, Base64, cron, colour, curl, UUID…) and rank the Bitlathe tools that fit, with the options to use.",
                    ["input": ["type": "string", "description": "The text to recognise."]], required: ["input"]),
         definition("smart_run", "Recognise and transform text",
-                   "Detect what the input is and run the best matching tool, as the Bitlathe app's Smart Box would. Also understands commands such as \"3 uuid v7\", \"password 24\" and \"now\".",
-                   ["input": ["type": "string", "description": "Data or a short command."]], required: ["input"]),
+                   "Detect what the input is and run the best matching tool, as the Bitlathe app's Smart Box would. Also understands commands (\"3 uuid v7\", \"password 24\", \"now\") and instructions followed by data (\"sha256 hello\", \"to yaml {...}\", \"base64 decode aGk=\", \"minify {...}\"). The structured result says what was recognised, which tools ran, and the alternatives to request with run_tool.",
+                   ["input": ["type": "string", "description": "Data, a short command, or an instruction followed by data."]], required: ["input"]),
         definition("run_tool", "Run one Bitlathe tool",
                    "Run a tool by id with exact options (see list_tools for ids and options). Deterministic and local.",
                    ["tool": ["type": "string", "description": "Tool id, e.g. json.format, base64.text, jwt.debug, time.unix."],
@@ -152,9 +152,24 @@ public struct MCPServer: Sendable {
         var result = content(for: output)
         let note = "Recognised as \(analysis.formatName); ran \(used.joined(separator: " then "))"
             + (action.options.isEmpty ? "" : " with \(Self.encode(Self.json(action.options)))") + "."
+        // What else fits, so an agent that wanted something different can ask for it with run_tool instead of guessing.
+        let others: [[String: Any]] = analysis.actions.filter { $0.key != action.key && !$0.opensTool }.prefix(4).map {
+            ["tool": $0.tool.id, "name": [$0.title, $0.detail].compactMap { $0 }.joined(separator: " · "), "options": Self.json($0.options)]
+        }
         var blocks = result["content"] as? [[String: Any]] ?? []
         blocks.insert(["type": "text", "text": note], at: 0)
+        if analysis.isSensitive {
+            blocks.append(["type": "text", "text": "Note: the input looks like a credential or key. Avoid repeating it in full."])
+        }
         result["content"] = blocks
+        var structured = result["structuredContent"] as? [String: Any] ?? [:]
+        structured["recognised"] = analysis.formatName
+        structured["confidence"] = NSDecimalNumber(string: String(format: "%.2f", analysis.confidence))
+        structured["ran"] = used
+        structured["options"] = Self.json(action.options)
+        structured["alternatives"] = others
+        structured["sensitive"] = analysis.isSensitive
+        result["structuredContent"] = structured
         return result
     }
 

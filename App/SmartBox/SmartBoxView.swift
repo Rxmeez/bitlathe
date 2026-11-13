@@ -25,7 +25,7 @@ struct SmartBoxView: View {
                     CodeEditor(text: $model.text, language: model.inputLanguage, placeholder: "", config: config, controller: editor)
                         .accessibilityLabel("Smart Box input")
                     if model.isEmpty {
-                        HomeEmptyState(model: model).allowsHitTesting(true)
+                        HomeEmptyState(model: model, minHeight: geo.size.height - Layout.statusHeight) { editor.focus() }
                     }
                 }
                 .frame(height: model.isEmpty ? nil : inputHeight(total: geo.size.height, width: geo.size.width, config: config))
@@ -94,6 +94,9 @@ struct SmartBoxView: View {
 
 private struct HomeEmptyState: View {
     let model: SmartBoxModel
+    /// The visible height, so a short page sits in the middle of the window instead of hugging the top.
+    let minHeight: CGFloat
+    let focus: () -> Void
     @Environment(AppModel.self) private var app
 
     var body: some View {
@@ -102,9 +105,10 @@ private struct HomeEmptyState: View {
                 VStack(spacing: Space.sm) {
                     (Text("Paste ") + Text("anything").foregroundStyle(LinearGradient(colors: [Palette.accent, Palette.accent.opacity(0.7)], startPoint: .leading, endPoint: .trailing)) + Text("."))
                         .font(.system(size: 30, weight: .semibold))
-                    Text("JSON, JWTs, timestamps, URLs, Base64, cron, colours, curl… Bitlathe works out what it is and what you usually do with it. Or type a command like “3 uuid v7”, “password” or “now”.")
+                    Text("Bitlathe works out what it is and what you usually do with it.")
                         .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 }
+                BoxPrompt(action: focus)
                 if let report = app.detectionReport, let best = report.best, let text = app.detectedText {
                     Button { model.paste(text) } label: {
                         HStack(spacing: Space.sm) {
@@ -136,17 +140,26 @@ private struct HomeEmptyState: View {
                         .font(.caption).foregroundStyle(Palette.subtle)
                         .multilineTextAlignment(.center)
                 }
-                section("Try") {
+                section("Try some data") {
                     FlowLayout(spacing: Space.sm, rowSpacing: Space.sm) {
                         ForEach(HomeSamples.all, id: \.label) { sample in
                             Chip(sample.label, symbol: sample.symbol) { model.paste(sample.text) }
                         }
                     }
                 }
+                section("Or say what you want") {
+                    FlowLayout(spacing: Space.sm, rowSpacing: Space.sm) {
+                        ForEach(HomeSamples.instructions, id: \.label) { sample in
+                            InstructionChip(label: sample.label) { model.paste(sample.text) }
+                        }
+                    }
+                }
             }
             .frame(maxWidth: SmartMetrics.emptyWidth)
-            .padding(Space.xxl)
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, Space.xxl).padding(.vertical, Space.xl)
+            // A little above centre reads as centred once the title bar is counted.
+            .padding(.bottom, max(0, minHeight * 0.06))
+            .frame(maxWidth: .infinity, minHeight: max(minHeight, 0))
         }
         .scrollBounceBehavior(.basedOnSize)
         // Clicks between the controls go through to the editor underneath, so you can just start typing.
@@ -158,6 +171,67 @@ private struct HomeEmptyState: View {
             Text(title.uppercased()).font(.caption2.weight(.semibold)).tracking(0.8).foregroundStyle(Palette.subtle)
             content()
         }
+    }
+}
+
+/// The box, drawn: on an empty screen the editor underneath has no edges, so this shows where typing goes.
+private struct BoxPrompt: View {
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: Space.sm) {
+                RoundedRectangle(cornerRadius: 1).fill(Palette.accent).frame(width: 2, height: 20)
+                Text("Paste or type here").foregroundStyle(Palette.subtle)
+                Spacer()
+                KeyHint("⌘V", "paste")
+                KeyHint("⌘K", "all tools")
+            }
+            .font(.title3)
+            .padding(.horizontal, Space.lg)
+            .frame(height: 52)
+            .background(Palette.raised.opacity(hovering ? 1 : 0.6), in: RoundedRectangle(cornerRadius: Radius.large, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Radius.large, style: .continuous).strokeBorder(Palette.accent.opacity(0.45), lineWidth: 1.5))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .accessibilityLabel("Smart Box. Paste or type anything.")
+    }
+}
+
+private struct KeyHint: View {
+    let keys: String
+    let label: String
+    init(_ keys: String, _ label: String) { self.keys = keys; self.label = label }
+    var body: some View {
+        HStack(spacing: Space.xs) {
+            Text(keys).font(.caption.monospaced().weight(.medium))
+                .padding(.horizontal, 5).padding(.vertical, 2)
+                .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Palette.separator))
+            Text(label).font(.caption)
+        }
+        .foregroundStyle(.secondary)
+    }
+}
+
+/// A typed instruction shown as it would be typed (monospaced, neutral), unlike the data samples.
+private struct InstructionChip: View {
+    let label: String
+    let action: () -> Void
+    @State private var hovering = false
+    var body: some View {
+        Button(action: action) {
+            Text(label).font(Typography.captionMono)
+                .padding(.horizontal, Space.md).padding(.vertical, Space.xs + 1)
+                .background(hovering ? Palette.raised : Palette.raised.opacity(0.6), in: RoundedRectangle(cornerRadius: Radius.small, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: Radius.small, style: .continuous).strokeBorder(Palette.separator.opacity(0.6)))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help("Type this in the box")
     }
 }
 
@@ -199,7 +273,16 @@ enum HomeSamples {
         Sample(label: "Cron", symbol: "calendar.badge.clock", text: "*/15 9-17 * * 1-5"),
         Sample(label: "Colour", symbol: "paintpalette", text: "#3D7BFF"),
         Sample(label: "curl", symbol: "terminal", text: #"curl -X POST https://api.example.com/v1/items -H 'Content-Type: application/json' -d '{"name":"widget","qty":2}'"#),
-        Sample(label: "3 uuid v7", symbol: "number", text: "3 uuid v7"),
+    ]
+    /// Typed commands and instructions: say what you want, then the data.
+    static let instructions: [Sample] = [
+        Sample(label: "3 uuid v7", symbol: "", text: "3 uuid v7"),
+        Sample(label: "sha256 hello", symbol: "", text: "sha256 hello"),
+        Sample(label: "to yaml {…}", symbol: "", text: #"to yaml {"name":"Bitlathe","tags":["mac","dev"],"port":8080}"#),
+        Sample(label: "base64 decode …", symbol: "", text: "base64 decode SGVsbG8sIEJpdGxhdGhlIQ=="),
+        Sample(label: "snake_case …", symbol: "", text: "snake_case helloBraveNewWorld"),
+        Sample(label: "password 24", symbol: "", text: "password 24"),
+        Sample(label: "now", symbol: "", text: "now"),
     ]
 }
 
@@ -225,9 +308,9 @@ private struct SuggestionBar: View {
                     Text("Detected").foregroundStyle(Palette.subtle)
                     FormatPill(name: analysis.formatName, confidence: analysis.confidence)
                 case .command:
-                    FormatPill(name: "Command", confidence: nil)
+                    FormatPill(name: analysis.formatName, confidence: nil)
                 case .words:
-                    Text(analysis.actions.first?.opensTool == true ? "Not data: matching tools" : "Plain text")
+                    Text(analysis.actions.first?.opensTool == true ? "Not data: matching tools" : analysis.formatKey == "lines" ? "A list" : "Plain text")
                         .foregroundStyle(Palette.subtle)
                 }
                 if let action = model.current {

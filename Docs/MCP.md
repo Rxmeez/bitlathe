@@ -31,7 +31,7 @@ Settings › Integrations shows both, with the right path for your copy and a Co
 | Tool | What it does |
 |---|---|
 | `detect` | Recognises text and ranks the tools that fit, with the options to use. |
-| `smart_run` | Recognises the input and runs the best tool, like the app's Smart Box. Chains when the result is itself data (Base64 that hides JSON). Understands `3 uuid v7`, `password 24`, `now`, `lorem 2 sentences`. |
+| `smart_run` | Recognises the input and runs the best tool, like the app's Smart Box. Chains when the result is itself data (Base64 that hides JSON). Understands commands (`3 uuid v7`, `password 24`, `now`) and instructions followed by data (`sha256 hello`, `to yaml {…}`, `base64 decode aGk=`). Its structured result lists what was recognised, the tools that ran, the alternatives, and whether the input looks like a secret. |
 | `run_tool` | Runs one tool by id with typed options. Unknown options and invalid choices are errors that list the valid ones. Binary input via `input_base64`. |
 | `list_tools` | Every tool with its id, summary, and options as a schema (type, default, allowed values). Filter with `query` or `category`. |
 | `run_pipeline` | Runs tools in a chain: an expression such as `base64.text mode=decode \| json.format`, or a pipeline saved in the app. |

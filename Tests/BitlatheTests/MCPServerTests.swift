@@ -66,6 +66,9 @@ final class MCPServerTests: XCTestCase {
         XCTAssertTrue(smart.text.contains("then json.format"), smart.text)
         XCTAssertTrue(smart.text.contains("\"id\": 42"), smart.text)
 
+        let hashed = try await call("smart_run", ["input": "sha256 hello"])
+        XCTAssertTrue(hashed.text.contains("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"), hashed.text)
+
         let ids = try await call("smart_run", ["input": "2 uuid v7"])
         XCTAssertEqual(ids.text.split(separator: "\n").filter { $0.count == 36 }.count, 2, ids.text)
 

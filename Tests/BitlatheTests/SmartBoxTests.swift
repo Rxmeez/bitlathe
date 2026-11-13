@@ -90,6 +90,112 @@ final class SmartBoxTests: XCTestCase {
         XCTAssertTrue(prose.actions.contains { $0.tool.id == "string.inspect" })
     }
 
+    // MARK: Typed instructions
+
+    func run(_ s: String) async throws -> (SmartBox.Analysis, String) {
+        let a = try analyse(s)
+        let action = try XCTUnwrap(a.actions.first)
+        let out = try await action.tool.run(text: action.inputOverride ?? s, options: action.options)
+        return (a, out.text)
+    }
+
+    func testInstructionsRunOnTheRestOfTheText() async throws {
+        let (hash, digest) = try await run("sha256 hello")
+        XCTAssertEqual(hash.kind, .command)
+        XCTAssertEqual(hash.formatKey, "intent:hash")
+        XCTAssertEqual(hash.actions.first?.title, "SHA-256")
+        XCTAssertTrue(digest.contains("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"), digest)
+
+        let (_, encoded) = try await run("base64 encode hello")
+        XCTAssertEqual(encoded.trimmingCharacters(in: .whitespacesAndNewlines), "aGVsbG8=")
+        let (_, decoded) = try await run("url decode a%20b%26c")
+        XCTAssertEqual(decoded.trimmingCharacters(in: .whitespacesAndNewlines), "a b&c")
+        let (_, upper) = try await run("uppercase hello world")
+        XCTAssertEqual(upper.trimmingCharacters(in: .whitespacesAndNewlines), "HELLO WORLD")
+        let (_, snake) = try await run("snake_case: helloWorld")
+        XCTAssertEqual(snake.trimmingCharacters(in: .whitespacesAndNewlines), "hello_world")
+    }
+
+    func testInstructionsPickTheToolFromTheData() async throws {
+        let (yaml, text) = try await run(#"to yaml {"name":"Bitlathe","n":2}"#)
+        XCTAssertEqual(yaml.actions.first?.tool.id, "convert.yaml-json")
+        XCTAssertEqual(yaml.actions.first?.options["direction"], .string("json2yaml"))
+        XCTAssertTrue(text.contains("name: Bitlathe"), text)
+
+        let (json, back) = try await run("to json\nname: Bitlathe\nn: 2")
+        XCTAssertEqual(json.actions.first?.options["direction"], .string("yaml2json"))
+        XCTAssertTrue(back.contains("\"name\""), back)
+
+        let (minify, small) = try await run("minify {\n  \"a\": 1\n}")
+        XCTAssertEqual(minify.actions.first?.tool.id, "json.format")
+        XCTAssertEqual(small.trimmingCharacters(in: .whitespacesAndNewlines), #"{"a":1}"#)
+    }
+
+    func testProseIsNotMistakenForAnInstruction() throws {
+        // Everyday words need a colon or a new line before the data.
+        for prose in ["sort the list by name before you send it", "title of the next release", "format is not known yet",
+                      "lower bound on the result", "check the logs tomorrow morning"] {
+            XCTAssertNotEqual(try analyse(prose).kind, .command, prose)
+        }
+        XCTAssertEqual(try analyse("sort:\nb\na").actions.first?.options["operation"], .string("sort"))
+        XCTAssertEqual(try analyse("sort\nb\na").actions.first?.tool.id, "text.lines")
+        // A phrase with nothing after it is a tool search, and longer words are not phrases.
+        XCTAssertNotEqual(try analyse("sha256").kind, .command)
+        XCTAssertNotEqual(try analyse("sha256sum output").kind, .command)
+    }
+
+    func testAnInstructionKeepsWhatTheDataWouldGetOneKeyAway() throws {
+        let a = try analyse(#"to yaml {"name":"Bitlathe"}"#)
+        XCTAssertGreaterThan(a.actions.count, 1)
+        XCTAssertEqual(a.actions[1].tool.id, "json.format", "the data is JSON, so its formatter is the next choice")
+        XCTAssertEqual(a.actions[1].inputOverride, #"{"name":"Bitlathe"}"#, "alternatives run on the data, not on the instruction")
+        // A choice remembered for another instruction of the same kind does not leak in.
+        let learned: SmartBox.Learned = ["intent:hash": ["hash.generate|algorithm=md5": 9]]
+        let b = try analyse("sha256 hello", learned: learned)
+        XCTAssertFalse(b.actions.contains { $0.options["algorithm"] == .string("md5") })
+    }
+
+    func testRequestsInWordsFindTheTool() throws {
+        let a = try analyse("convert this to yaml")
+        XCTAssertEqual(a.kind, .words)
+        XCTAssertEqual(a.actions.first?.tool.id, "convert.yaml-json", a.actions.map(\.title).joined(separator: ", "))
+        let prose = try analyse("The quick brown fox jumps over the lazy dog.")
+        XCTAssertEqual(prose.actions.first?.tool.id, "string.inspect")
+    }
+
+    func testLookAlikeActionsAreMerged() throws {
+        // Remembered with other options, the same tool would show as a second identical chip.
+        let learned: SmartBox.Learned = ["json.format": ["json.format|sortKeys=true": 1]]
+        let a = try analyse(#"{"name":"Bitlathe","tags":["mac","dev"]}"#, learned: learned)
+        let labels = a.actions.map { $0.title + "|" + ($0.detail ?? "") }
+        XCTAssertEqual(Set(labels).count, labels.count, labels.joined(separator: ", "))
+    }
+
+    func testBrokenJSONStillGetsTheFormatter() async throws {
+        let a = try analyse(#"{"name": "Bitlathe", "tags": ["a" "b"]"#)
+        XCTAssertEqual(a.kind, .data)
+        XCTAssertEqual(a.actions.first?.tool.id, "json.format")
+        XCTAssertEqual(a.formatName, "Looks like JSON with a mistake")
+        XCTAssertFalse(a.actions.contains { $0.title == "Minify" }, "no point offering modes that cannot run")
+        // Valid JSON is unaffected, and text that merely starts with a bracket is not JSON.
+        XCTAssertEqual(try analyse(#"{"a":1}"#).formatName.contains("mistake"), false)
+        XCTAssertNotEqual(try analyse("[draft] release notes for Friday").actions.first?.tool.id, "json.format")
+    }
+
+    func testListsGetTheFixTheyNeed() async throws {
+        let a = try analyse("banana\napple\ncherry\napple\nbanana\ndate")
+        XCTAssertEqual(a.formatKey, "lines")
+        XCTAssertEqual(a.actions.first?.title, "Remove duplicates")
+        XCTAssertEqual(a.actions.first?.reason, "2 lines are repeated")
+        XCTAssertEqual(a.actions.dropFirst().first?.title, "Sort lines")
+        let out = try await XCTUnwrap(a.actions.first).tool.run(text: "b\na\nb", options: XCTUnwrap(a.actions.first).options)
+        XCTAssertEqual(out.text.trimmingCharacters(in: .whitespacesAndNewlines), "b\na")
+        // Already tidy: nothing to fix, so the general text tools lead. Wrapped prose is not a list.
+        XCTAssertEqual(try analyse("apple\nbanana\ncherry").actions.first?.tool.id, "string.inspect")
+        let prose = "It was a bright cold day in April, and the clocks\nwere striking thirteen. Winston Smith, his chin nuzzled\ninto his breast in an effort to escape the vile wind."
+        XCTAssertEqual(try analyse(prose).formatKey, "words")
+    }
+
     func testLearningKeysRoundTrip() throws {
         let key = SmartBox.key("json.format", ["mode": .string("minify"), "indent": .string("4")])
         XCTAssertEqual(key, "json.format|indent=4&mode=minify")
@@ -127,6 +233,19 @@ final class SmartBoxStoreTests: XCTestCase {
         try await store.clearChoices()
         let none = try await store.choices()
         XCTAssertTrue(none.isEmpty)
+    }
+
+    func testOldChoicesFade() async throws {
+        let store = try DataStore.inMemory()
+        let now = Date()
+        let day: TimeInterval = 24 * 3600
+        for _ in 0..<8 { try await store.recordChoice(format: "json.format", action: "old", at: now.addingTimeInterval(-65 * day)) }
+        for _ in 0..<3 { try await store.recordChoice(format: "json.format", action: "new", at: now.addingTimeInterval(-day)) }
+        try await store.recordChoice(format: "json.format", action: "ancient", at: now.addingTimeInterval(-400 * day))
+        let all = try await store.choices(now: now)
+        XCTAssertEqual(all["json.format"]?["old"], 2, "8 choices, two half-lives ago")
+        XCTAssertEqual(all["json.format"]?["new"], 3)
+        XCTAssertNil(all["json.format"]?["ancient"], "a single choice from over a year ago no longer counts")
     }
 
     func testLatestInputsAreNewestFirstAndDistinct() async throws {

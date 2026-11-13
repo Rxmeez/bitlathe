@@ -255,7 +255,8 @@ final class SmartBoxModel {
                 }
                 return (format, line, top.value)
             }
-            .sorted { $0.2 > $1.2 }
+            // Ties by name: dictionary order changes between launches, and the line must not shuffle.
+            .sorted { $0.2 != $1.2 ? $0.2 > $1.2 : $0.1 < $1.1 }
             .prefix(3)
             .map(\.1)
     }

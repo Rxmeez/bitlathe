@@ -54,7 +54,7 @@ public enum SmartBox {
         public var formatKey: String
         /// What it looks like, for people ("JSON Web Token").
         public var formatName: String
-        public var confidence: Double
+        public let confidence: Double
         public var actions: [Action]
         /// Credentials or keys: shown with a warning, and never handed to a model.
         public var isSensitive: Bool
@@ -81,8 +81,38 @@ public enum SmartBox {
             return a
         }
 
+        // A typed instruction ("sha256 hello", "to yaml {…}"): do that to the rest of the text. What the data
+        // itself would get (the JSON formatter for JSON) stays one key away.
+        if let intent = Intent.parse(trimmed, tools: byID) {
+            let key = "intent:\(intent.name)"
+            let dataTrimmed = intent.data.trimmingCharacters(in: .whitespacesAndNewlines)
+            let otherwise = plain(intent.data, trimmed: dataTrimmed, tools: tools, byID: byID, ignoring: ignoring, learned: [:], limit: limit)?.actions ?? []
+            let offered = intent.actions + otherwise.filter { !$0.opensTool && $0.inputOverride == nil }.map { a in
+                Action(key: a.key, tool: a.tool, options: a.options, then: nil, inputOverride: intent.data, opensTool: false,
+                       title: a.title, detail: a.detail, reason: a.reason, confidence: min(a.confidence, 0.5), learned: 0)
+            }
+            // Only remembered choices that are on offer: a remembered "md5" must not reappear for "sha256 …".
+            let counts = (learned[key] ?? [:]).filter { k, _ in offered.contains { $0.key == k } }
+            return Analysis(kind: .command, formatKey: key, formatName: "Instruction", confidence: 0.97,
+                            actions: rank(offered, learned: counts, tools: byID, limit: limit), isSensitive: looksSecret(intent.data))
+        }
+        return plain(text, trimmed: trimmed, tools: tools, byID: byID, ignoring: ignoring, learned: learned, limit: limit)
+    }
+
+    /// Recognised data, or words (tool names, prose).
+    static func plain(_ text: String, trimmed: String, tools: [AnyTool], byID: [String: AnyTool], ignoring: Set<String>,
+                      learned: Learned, limit: Int) -> Analysis? {
+
         let usable = tools.filter { $0.io.input == .text && !$0.sideEffects && $0.kind != .pipeline }
-        let report = DetectionEngine.detect(text, tools: usable, ignoring: ignoring)
+        var report = DetectionEngine.detect(text, tools: usable, ignoring: ignoring)
+        // Broken JSON is not valid JSON, so the formatter does not claim it, yet it is the tool that shows where the
+        // mistake is. Without this the best match is whatever regex happens to fit.
+        let nearMiss = "Looks like JSON with a mistake"
+        if looksLikeBrokenJSON(trimmed), !report.results.contains(where: { $0.tool.id == "json.format" }),
+           !ignoring.contains("json.format"), let json = byID["json.format"] {
+            report.results.insert(DetectionResult(tool: json, score: DetectionScore(0.8, nearMiss)), at: 0)
+            report.results.sort { $0.score.confidence > $1.score.confidence }
+        }
         if let best = report.best {
             // Weak guesses (a Base64 string "could be" an identifier for the case converter) only add noise.
             // User scripts match on a regex alone, so they count as alternatives only when they are as sure as the best.
@@ -93,7 +123,7 @@ public enum SmartBox {
             var actions: [Action] = strong.prefix(limit + 2).map { r in
                 action(r.tool, options: r.score.options, reason: r.score.reason, confidence: r.score.confidence)
             }
-            actions.insert(contentsOf: modeVariants(of: best), at: min(1, actions.count))
+            if best.score.reason != nearMiss { actions.insert(contentsOf: modeVariants(of: best), at: min(1, actions.count)) }
             let key = best.tool.id
             let sensitive = !best.tool.historyEnabledByDefault || looksSecret(trimmed)
             return Analysis(kind: .data, formatKey: key, formatName: best.score.reason, confidence: best.score.confidence,
@@ -103,19 +133,32 @@ public enum SmartBox {
         // Not data: words. Offer tools whose names match, then general text tools.
         var actions: [Action] = []
         if isShortPhrase(trimmed) {
-            for (i, tool) in ToolRegistry.search(trimmed, in: tools.filter { $0.kind != .pipeline }, limit: 4).enumerated() {
+            for (i, tool) in searchTools(trimmed, in: tools.filter { $0.kind != .pipeline }, limit: 4).enumerated() {
                 let runnable = tool.io.input == .none
                 actions.append(Action(key: "open:" + tool.id, tool: tool, options: [:], then: nil, inputOverride: runnable ? "" : nil,
                                       opensTool: !runnable, title: tool.name, detail: runnable ? nil : "Open",
                                       reason: tool.summary, confidence: 0.6 - Double(i) * 0.02, learned: 0))
             }
         }
+        // A list (several short lines): say what is wrong with it, and offer the fix, before the general text tools.
+        let list = listFacts(trimmed)
+        if let list, let lines = byID["text.lines"], !ignoring.contains("text.lines") {
+            func line(_ operation: String, _ title: String, _ reason: String, _ confidence: Double) -> Action {
+                let options: OptionValues = ["operation": .string(operation)]
+                return Action(key: SmartBox.key(lines.id, options), tool: lines, options: options, then: nil, inputOverride: nil, opensTool: false,
+                              title: title, detail: nil, reason: reason, confidence: confidence, learned: 0)
+            }
+            if list.repeated > 0 {
+                actions.append(line("dedupe", "Remove duplicates", list.repeated == 1 ? "1 line is repeated" : "\(list.repeated) lines are repeated", 0.58))
+            }
+            if !list.sorted { actions.append(line("sort", "Sort lines", "\(list.count) lines, not in order", 0.56)) }
+        }
         for (i, id) in textFallbackIDs.enumerated() {
             guard let tool = byID[id], !ignoring.contains(id) else { continue }
             actions.append(action(tool, options: [:], reason: "Works on any text", confidence: 0.4 - Double(i) * 0.01))
         }
-        let key = "words"
-        return Analysis(kind: .words, formatKey: key, formatName: actions.first?.opensTool == true ? "Tool search" : "Text",
+        let key = list == nil ? "words" : "lines"
+        return Analysis(kind: .words, formatKey: key, formatName: actions.first?.opensTool == true ? "Tool search" : list == nil ? "Text" : "List",
                         confidence: 0.4, actions: rank(actions, learned: learned[key] ?? [:], tools: byID, limit: limit),
                         isSensitive: looksSecret(trimmed))
     }
@@ -207,15 +250,40 @@ public enum SmartBox {
         }
         var seen = Set<String>()
         let unique = all.filter { seen.insert($0.key).inserted }
+        // Two chips that read the same ("JSON Formatter" as detected, and as remembered with other options) are one
+        // choice to the person: keep the better-ranked one.
+        func label(_ a: Action) -> String { a.title + "\u{1}" + (a.detail ?? "") + "\u{1}" + (a.then?.tool.id ?? "") + (a.opensTool ? "\u{1}open" : "") }
         let withLearning = unique.enumerated().map { i, a -> (Int, Action) in
             var a = a
             a.learned = learned[a.key] ?? 0
             return (i, a)
         }
+        var labels = Set<String>()
         return withLearning
             .sorted { $0.1.score != $1.1.score ? $0.1.score > $1.1.score : $0.0 < $1.0 }
-            .prefix(limit)
             .map(\.1)
+            .filter { labels.insert(label($0)).inserted }
+            .prefix(limit)
+            .map { $0 }
+    }
+
+    /// Starts like JSON and has JSON's punctuation, whether or not it parses.
+    static func looksLikeBrokenJSON(_ s: String) -> Bool {
+        guard let first = s.first, first == "{" || first == "[" else { return false }
+        let sample = s.prefix(4096)
+        return sample.contains("\"") && (sample.contains(":") || sample.contains(","))
+    }
+
+    /// For text that is a list (three or more short lines): how many lines repeat an earlier one, and whether it is in order.
+    static func listFacts(_ s: String) -> (count: Int, repeated: Int, sorted: Bool)? {
+        let lines = s.split(separator: "\n", omittingEmptySubsequences: true).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        guard lines.count >= 3, lines.count <= 50_000, lines.allSatisfy({ $0.count <= 200 }) else { return nil }
+        // Prose wrapped over lines is not a list: most list items are a few words.
+        let wordy = lines.filter { $0.split(separator: " ").count > 6 }.count
+        guard wordy * 4 <= lines.count else { return nil }
+        let repeated = lines.count - Set(lines).count
+        let sorted = zip(lines, lines.dropFirst()).allSatisfy { $0.localizedStandardCompare($1) != .orderedDescending }
+        return (lines.count, repeated, sorted)
     }
 
     static func isShortPhrase(_ s: String) -> Bool {

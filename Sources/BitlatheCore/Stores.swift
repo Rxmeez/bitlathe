@@ -155,21 +155,29 @@ public actor DataStore {
     // MARK: Smart Box learning
 
     /// Counts one accepted Smart Box action for a kind of data ("json.format" → "convert.yaml-json").
-    public func recordChoice(format: String, action: String) async throws {
+    public func recordChoice(format: String, action: String, at date: Date = Date()) async throws {
         try await migrate()
         try await db.execute("""
             INSERT INTO smart_choices (format, action, count, last_used) VALUES (?, ?, 1, ?)
             ON CONFLICT(format, action) DO UPDATE SET count = count + 1, last_used = excluded.last_used
-            """, [.text(format), .text(action), .double(Date().timeIntervalSince1970)])
+            """, [.text(format), .text(action), .double(date.timeIntervalSince1970)])
     }
 
-    /// Everything learned so far: format → action → times accepted.
-    public func choices() async throws -> [String: [String: Int]] {
+    /// A choice not made for this long counts half as much; twice as long, a quarter; and so on.
+    public static let choiceHalfLife: TimeInterval = 30 * 24 * 3600
+
+    /// Everything learned so far: format → action → times accepted. Old habits fade: each count is halved for
+    /// every 30 days since that choice was last made, so what you do now outranks what you did last year.
+    /// The stored counts are untouched; making the choice again brings it straight back.
+    public func choices(now: Date = Date()) async throws -> [String: [String: Int]] {
         try await migrate()
         var out: [String: [String: Int]] = [:]
-        for row in try await db.query("SELECT format, action, count FROM smart_choices") {
+        for row in try await db.query("SELECT format, action, count, last_used FROM smart_choices") {
             guard let f = row["format"]?.string, let a = row["action"]?.string, let n = row["count"]?.int else { continue }
-            out[f, default: [:]][a] = n
+            let idle = max(0, now.timeIntervalSince1970 - (row["last_used"]?.double ?? now.timeIntervalSince1970))
+            let halvings = min(Int(idle / Self.choiceHalfLife), 30)
+            let effective = n >> halvings
+            if effective > 0 { out[f, default: [:]][a] = effective }
         }
         return out
     }

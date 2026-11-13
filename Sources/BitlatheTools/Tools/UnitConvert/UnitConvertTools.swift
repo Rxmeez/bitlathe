@@ -23,7 +23,7 @@ public struct ByteSizeTool: DevTool {
 
     public func run(_ input: ToolInput, options: Options) async throws -> ToolOutput {
         let text = input.text.trimmed().replacingOccurrences(of: ",", with: "")
-        guard let m = text.captures("^([0-9]*\\.?[0-9]+)\\s*([A-Za-z]*)$") else { throw ToolError("Enter a size like 1.5 GB, 512 MiB or 1024") }
+        guard let m = text.captures("^((?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+))\\s*([A-Za-z]*)$") else { throw ToolError("Enter a size like 1.5 GB, 512 MiB or 1024") }
         guard let value = Double(m[1]) else { throw ToolError("Invalid number") }
         var unit = m[2].isEmpty ? "B" : m[2]
         var bytes: Double
@@ -50,7 +50,9 @@ public struct ByteSizeTool: DevTool {
     }
 
     public static func detect(_ s: String) -> DetectionScore? {
-        s.range(of: "^[0-9]*\\.?[0-9]+\\s*([KMGTP]i?B|[kmgt]b|bytes?|bits?)$", options: [.regularExpression, .caseInsensitive]) != nil ? DetectionScore(0.8, "Byte size") : nil
+        // Length guard + a regex without overlapping quantifiers: `[0-9]*\.?[0-9]+` is quadratic on a long run of digits.
+        guard s.utf8.count <= 40 else { return nil }
+        return s.range(of: "^(?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+)\\s*([KMGTP]i?B|[kmgt]b|bytes?|bits?)$", options: [.regularExpression, .caseInsensitive]) != nil ? DetectionScore(0.8, "Byte size") : nil
     }
 }
 
@@ -87,7 +89,7 @@ public struct UnitConverterTool: DevTool {
 
     public func run(_ input: ToolInput, options: Options) async throws -> ToolOutput {
         let text = input.text.trimmed().replacingOccurrences(of: ",", with: "")
-        guard let m = text.captures("^(-?[0-9]*\\.?[0-9]+)\\s*([A-Za-zµμ/]*)$") else { throw ToolError("Enter a value with a unit, e.g. 1500 ms, 100 Mbps or 24px") }
+        guard let m = text.captures("^(-?(?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+))\\s*([A-Za-zµμ/]*)$") else { throw ToolError("Enter a value with a unit, e.g. 1500 ms, 100 Mbps or 24px") }
         guard let value = Double(m[1]) else { throw ToolError("Invalid number") }
         let unit = m[2].lowercased()
         var kind = options.kind
@@ -173,7 +175,8 @@ public struct UnitConverterTool: DevTool {
     }
 
     public static func detect(_ s: String) -> DetectionScore? {
-        if s.range(of: "^-?[0-9]*\\.?[0-9]+\\s*(ms|ns|µs|us|sec|secs|seconds?|mins?|minutes?|hours?|hrs?|days?|weeks?|[KMG]?bps|[KMG]i?B/s|px|pt|rem|em)$", options: [.regularExpression, .caseInsensitive]) != nil {
+        guard s.utf8.count <= 40 else { return nil }
+        if s.range(of: "^-?(?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+)\\s*(ms|ns|µs|us|sec|secs|seconds?|mins?|minutes?|hours?|hrs?|days?|weeks?|[KMG]?bps|[KMG]i?B/s|px|pt|rem|em)$", options: [.regularExpression, .caseInsensitive]) != nil {
             return DetectionScore(0.75, "Value with a unit")
         }
         return nil

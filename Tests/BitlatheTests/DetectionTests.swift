@@ -160,4 +160,37 @@ final class DetectionTests: XCTestCase {
                       "-----BEGIN CERTIFICATE-----", "$2", "eyJ.eyJ.", "::", "1e999999999", "0x", "{", "[", "<", "---\n---\n---"]
         for s in inputs { _ = DetectionEngine.detect(s, tools: tools) }
     }
+
+    func testBinaryDecodersRejectDeepNesting() {
+        // Regression: a long run of hex digits such as "aaaa…" decodes as CBOR maps nested inside maps and overflowed the stack.
+        XCTAssertNil(BinaryDecodeTool.detect(String(repeating: "a", count: 100_000)))
+        XCTAssertThrowsError(try CBOR.decode(Data(repeating: 0xA1, count: 5000)))
+        XCTAssertThrowsError(try MessagePack.decode(Data(repeating: 0x91, count: 5000)))
+        XCTAssertThrowsError(try CBOR.decode(Data(repeating: 0x81, count: 200) + Data([0x01])), "deeper than the supported 128 levels")
+        XCTAssertNoThrow(try CBOR.decode(Data(repeating: 0x81, count: 50) + Data([0x01])), "ordinary nesting still decodes")
+    }
+
+    func testPathologicalLargeInputsStayResponsive() {
+        // Regressions: `[0-9]*\.?[0-9]+` made a long run of digits take minutes in the unit detectors, and the semver detector
+        // parsed an entire 64 KB paste as a version range.
+        let inputs: [(String, String)] = [
+            ("digits", String(repeating: "9", count: 60_000)), ("digits+unit", "1" + String(repeating: "0", count: 60_000) + "ms"),
+            ("nested json", String(repeating: "{\"a\":", count: 30_000)), ("words", String(repeating: "x ", count: 30_000)),
+            ("stars", String(repeating: "* ", count: 30_000)), ("many lines", String(repeating: "[a]\n", count: 15_000)),
+            ("parens", String(repeating: "(", count: 60_000)), ("tags", String(repeating: "<a>", count: 20_000)), ("dashes", String(repeating: "- ", count: 30_000)),
+            ("dots", String(repeating: "1.", count: 30_000)), ("escapes", String(repeating: "\\u00", count: 15_000)), ("percent", String(repeating: "%2", count: 30_000)),
+            ("hex", String(repeating: "b", count: 60_000)),
+        ]
+        for (label, input) in inputs {
+            let report = DetectionEngine.detect(input, tools: tools)
+            XCTAssertLessThan(report.duration, .milliseconds(500), label)
+        }
+    }
+
+    func testUnitDetectorsStillRecogniseRealValues() {
+        XCTAssertNotNil(ByteSizeTool.detect("1.5 GB")); XCTAssertNotNil(ByteSizeTool.detect("512MiB")); XCTAssertNotNil(ByteSizeTool.detect(".5 KB"))
+        XCTAssertNil(ByteSizeTool.detect("5. GB")); XCTAssertNil(ByteSizeTool.detect("GB"))
+        XCTAssertNotNil(UnitConverterTool.detect("1500 ms")); XCTAssertNotNil(UnitConverterTool.detect("-2.5h".replacingOccurrences(of: "h", with: " hours")))
+        XCTAssertNotNil(UnitConverterTool.detect("100 Mbps")); XCTAssertNil(UnitConverterTool.detect("100"))
+    }
 }

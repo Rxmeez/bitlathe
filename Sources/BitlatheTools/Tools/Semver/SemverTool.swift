@@ -70,10 +70,11 @@ public struct SemverTool: DevTool {
     }
 
     public static func detect(_ s: String) -> DetectionScore? {
+        guard s.utf8.count <= 16 * 1024 else { return nil }   // version lists and ranges are short; parsing a huge paste costs ~0.6 s
         let lines = s.split(separator: "\n").map { $0.trimmed() }
         if lines.count >= 2, lines.allSatisfy({ Semver($0) != nil }) { return DetectionScore(0.85, "List of versions") }
         if lines.count == 1, Semver(lines[0]) != nil, s.contains(".") , s.range(of: "^v?\\d+\\.\\d+\\.\\d+", options: .regularExpression) != nil { return DetectionScore(s.contains("-") ? 0.7 : 0.5, "Semantic version") }
-        if lines.count == 1, (try? SemverRange(lines[0])) != nil, s.range(of: "^[\\^~><=]", options: .regularExpression) != nil { return DetectionScore(0.7, "Version range", options: ["mode": .string("range")]) }
+        if lines.count == 1, lines[0].count <= 200, (try? SemverRange(lines[0])) != nil, s.range(of: "^[\\^~><=]", options: .regularExpression) != nil { return DetectionScore(0.7, "Version range", options: ["mode": .string("range")]) }
         return nil
     }
 }

@@ -19,6 +19,23 @@ public enum AppearanceMode: String, CaseIterable, Codable, Sendable {
 
 public enum SplitOrientation: String, Codable, Sendable { case horizontal, vertical }
 
+// menubar: a global hotkey combination (Carbon key code + Carbon modifier mask).
+public struct HotKeyCombo: Equatable, Sendable {
+    public var keyCode: UInt32
+    public var modifiers: UInt32
+    public init(keyCode: UInt32, modifiers: UInt32) { self.keyCode = keyCode; self.modifiers = modifiers }
+    public var stored: String { "\(keyCode):\(modifiers)" }
+    public init?(stored: String) {
+        let p = stored.split(separator: ":")
+        guard p.count == 2, let k = UInt32(p[0]), let m = UInt32(p[1]) else { return nil }
+        self.init(keyCode: k, modifiers: m)
+    }
+    /// Control + Option + Space (Carbon controlKey 0x1000, optionKey 0x800).
+    public static let defaultQuickPanel = HotKeyCombo(keyCode: 49, modifiers: 0x1000 | 0x800)
+    /// Control + Option + B.
+    public static let defaultMainWindow = HotKeyCombo(keyCode: 11, modifiers: 0x1000 | 0x800)
+}
+
 /// Typed, observable settings backed by UserDefaults.
 @MainActor
 @Observable
@@ -95,6 +112,10 @@ public final class Settings {
     // Quick panel
     public var quickPanelCopyOnOptionClick = true { didSet { set("quickPanelCopyOnOptionClick", quickPanelCopyOnOptionClick) } }
 
+    // menubar: global hotkeys (nil = disabled)
+    public var quickPanelHotKey: HotKeyCombo? = .defaultQuickPanel { didSet { set("quickPanelHotKey", quickPanelHotKey?.stored ?? "none") } }
+    public var mainWindowHotKey: HotKeyCombo? = .defaultMainWindow { didSet { set("mainWindowHotKey", mainWindowHotKey?.stored ?? "none") } }
+
     // MARK: Persistence
 
     private var loading = false
@@ -151,6 +172,13 @@ public final class Settings {
         onDeviceAIEnabled = b("onDeviceAIEnabled", onDeviceAIEnabled)
         automaticUpdates = b("automaticUpdates", automaticUpdates)
         quickPanelCopyOnOptionClick = b("quickPanelCopyOnOptionClick", quickPanelCopyOnOptionClick)
+        // menubar:
+        func hk(_ k: String, _ d: HotKeyCombo?) -> HotKeyCombo? {
+            guard let raw = defaults.string(forKey: "bl." + k) else { return d }
+            return HotKeyCombo(stored: raw)
+        }
+        quickPanelHotKey = hk("quickPanelHotKey", .defaultQuickPanel)
+        mainWindowHotKey = hk("mainWindowHotKey", .defaultMainWindow)
     }
 
     // MARK: Helpers
@@ -205,6 +233,8 @@ public final class Settings {
         launchAtLogin = fresh.launchAtLogin
         dockMode = fresh.dockMode
         showMenuBarIcon = fresh.showMenuBarIcon
+        quickPanelHotKey = fresh.quickPanelHotKey // menubar:
+        mainWindowHotKey = fresh.mainWindowHotKey
         appearance = fresh.appearance
         useAppAccent = fresh.useAppAccent
         editorTheme = fresh.editorTheme

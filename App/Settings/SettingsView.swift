@@ -8,7 +8,7 @@ struct SettingsView: View {
 
     var body: some View {
         TabView {
-            GeneralSettings().frame(width: 580, height: 230).tabItem { Label("General", systemImage: "gearshape") }
+            GeneralSettings().frame(width: 580, height: 470).tabItem { Label("General", systemImage: "gearshape") }
             AppearanceSettings().frame(width: 580, height: 260).tabItem { Label("Appearance", systemImage: "paintbrush") }
             EditorSettings().frame(width: 580, height: 380).tabItem { Label("Editor", systemImage: "text.cursor") }
             DetectionSettings().frame(width: 580, height: 520).tabItem { Label("Detection", systemImage: "wand.and.stars") }
@@ -32,8 +32,20 @@ struct GeneralSettings: View {
             }
             Section {
                 Toggle("Detect what's on the clipboard when Bitlathe comes forward", isOn: $s.detectOnFocus)
-            } footer: {
-                Text("The menu bar Quick Panel, global hotkeys and Services menu are coming in a later update.").font(.caption).foregroundStyle(.secondary)
+            }
+            // menubar: Show in / Quick Panel / hotkeys
+            Section {
+                Picker("Show in", selection: $s.dockMode) { ForEach(DockMode.allCases, id: \.self) { Text($0.title).tag($0) } }
+                if s.dockMode == .dockAndMenuBar {
+                    Toggle("Show the menu bar icon", isOn: $s.showMenuBarIcon)
+                }
+                Toggle("Option-click the menu bar icon to copy the result", isOn: $s.quickPanelCopyOnOptionClick)
+            } header: { Text("Menu bar") } footer: {
+                Text("Click the menu bar icon for the Quick Panel. It detects the clipboard and shows the result right away.").font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Global shortcuts") {
+                LabeledContent("Quick Panel") { HotKeyRecorder(combo: $s.quickPanelHotKey, defaultCombo: .defaultQuickPanel) }
+                LabeledContent("Open Bitlathe") { HotKeyRecorder(combo: $s.mainWindowHotKey, defaultCombo: .defaultMainWindow) }
             }
         }
         .formStyle(.grouped)

@@ -14,6 +14,7 @@ struct BitlatheApp: App {
                 .environment(model)
                 .frame(minWidth: Layout.minWindow.width, minHeight: Layout.minWindow.height)
                 .toastOverlay()
+                .background(MainWindowOpenerCapture()) // menubar:
         }
         .defaultSize(width: 1280, height: 820)
         .commands { BitlatheCommands(model: model) }
@@ -29,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSWindow.allowsAutomaticWindowTabbing = true
         AppearanceController.apply(Settings.shared.appearance)
+        MenuBarController.shared.start() // menubar:
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

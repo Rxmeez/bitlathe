@@ -134,7 +134,7 @@ Tool IDs are stable and used by the CLI (`bl <id>`), URL scheme and Shortcuts.
 | Windows + tabs, state restore | ⬜ |
 | Menu bar Quick Panel + global hotkeys | ⬜ |
 | Services menu | ⬜ |
-| History / favourites / pinned inputs / clipboard history | 🚧 (history, pinned inputs, favourites, usage done; clipboard capture pending) |
+| History / favourites / pinned inputs / clipboard history | 🚧 (history, pinned inputs, favourites, usage and opt-in developer clipboard history done: capture, filter, sidebar view, privacy settings) |
 | URL scheme | ⬜ |
 | App Intents | ⬜ |
 | CLI `bl` | 🚧 |

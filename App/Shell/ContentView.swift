@@ -45,7 +45,9 @@ struct ContentView: View {
     @ViewBuilder
     private var detail: some View {
         @Bindable var model = model
-        if let session = model.currentSession {
+        if model.selectedToolID == ClipboardMonitor.sidebarID, model.settings.clipboardHistoryEnabled {
+            ClipboardView() // clipboard: opt-in history destination
+        } else if let session = model.currentSession {
             VStack(spacing: 0) {
                 if let report = model.detectionReport { DetectionBanner(report: report) }
                 ToolScreen(session: session)

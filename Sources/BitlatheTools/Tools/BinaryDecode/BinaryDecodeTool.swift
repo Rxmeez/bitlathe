@@ -91,7 +91,14 @@ public struct BinaryDecodeTool: DevTool {
 struct ByteReader {
     let bytes: [UInt8]
     var pos = 0
+    /// Current container nesting; decoders call `enter()` so hostile input cannot overflow the stack.
+    var depth = 0
+    static let maxDepth = 128
     init(_ d: Data) { bytes = [UInt8](d) }
+    mutating func enter() throws {
+        depth += 1
+        if depth > Self.maxDepth { throw ToolError("Nesting is deeper than \(Self.maxDepth) levels") }
+    }
     var isAtEnd: Bool { pos >= bytes.count }
     var remaining: Int { bytes.count - pos }
 
@@ -140,6 +147,8 @@ enum MessagePack {
     }
 
     static func value(_ r: inout ByteReader) throws -> JSONValue {
+        try r.enter()
+        defer { r.depth -= 1 }
         let b = try r.byte()
         switch b {
         case 0x00...0x7F: return .number(Int(b))
@@ -295,6 +304,8 @@ enum CBOR {
     }
 
     static func value(_ r: inout ByteReader) throws -> JSONValue {
+        try r.enter()
+        defer { r.depth -= 1 }
         let b = try r.byte()
         let major = b >> 5
         let info = b & 0x1F

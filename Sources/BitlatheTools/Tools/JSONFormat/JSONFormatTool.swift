@@ -120,6 +120,14 @@ public struct JSONFormatTool: DevTool {
         if (try? JSONParser.parse(sample)) != nil { return DetectionScore(0.95, "Valid JSON") }
         if (try? JSONParser.parse(sample, options: .json5)) != nil { return DetectionScore(0.85, "Valid JSON5", options: ["inputMode": .string("json5")]) }
         if Detect.looksLikeJSON(sample) { return DetectionScore(0.55, "Looks like JSON with errors") }
+        // The detection engine only shows tools the first 64 KB, so a large document arrives cut off mid-way and can
+        // never parse or end in a closing bracket. Accept it when the visible part starts like JSON.
+        if sample.utf8.count >= DetectionEngine.sampleLimit - 4 {
+            let body = sample.dropFirst().drop { $0.isWhitespace }
+            if let next = body.first, f == "{" ? (next == "\"" || next == "}") : "\"{[-0123456789tfn]".contains(next) {
+                return DetectionScore(0.6, "Large JSON document")
+            }
+        }
         return nil
     }
 }

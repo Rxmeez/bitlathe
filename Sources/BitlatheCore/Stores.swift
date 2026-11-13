@@ -105,10 +105,15 @@ public actor DataStore {
         var sql = "SELECT * FROM history WHERE 1=1"
         var params: [SQLValue] = []
         if let toolID { sql += " AND tool_id = ?"; params.append(.text(toolID)) }
-        if !query.isEmpty { sql += " AND (input LIKE ? OR title LIKE ?)"; params += [.text("%\(query)%"), .text("%\(query)%")] }
+        if !query.isEmpty { sql += " AND (input LIKE ? ESCAPE '\\' OR title LIKE ? ESCAPE '\\')"; params += [.text("%\(Self.likeEscaped(query))%"), .text("%\(Self.likeEscaped(query))%")] }
         sql += " ORDER BY pinned DESC, created_at DESC LIMIT ?"
         params.append(.int(Int64(limit)))
         return try await db.query(sql, params).map(Self.historyEntry)
+    }
+
+    /// Escapes `%`, `_` and `\` so user-typed search text is matched literally by `LIKE … ESCAPE '\'`.
+    private static func likeEscaped(_ s: String) -> String {
+        s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "%", with: "\\%").replacingOccurrences(of: "_", with: "\\_")
     }
 
     public func recentInputs(limit: Int = 20) async throws -> [HistoryEntry] {
@@ -242,7 +247,7 @@ public actor DataStore {
         try await migrate()
         var sql = "SELECT * FROM clipboard"
         var params: [SQLValue] = []
-        if !query.isEmpty { sql += " WHERE content LIKE ?"; params.append(.text("%\(query)%")) }
+        if !query.isEmpty { sql += " WHERE content LIKE ? ESCAPE '\\'"; params.append(.text("%\(Self.likeEscaped(query))%")) }
         sql += " ORDER BY created_at DESC LIMIT ?"
         params.append(.int(Int64(limit)))
         return try await db.query(sql, params).map { r in

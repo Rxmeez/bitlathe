@@ -111,6 +111,8 @@ public struct DiffTool: DevTool {
     }
 
     public static func detect(_ s: String) -> DetectionScore? {
-        s.hasPrefix("--- ") && s.contains("\n+++ ") && s.contains("\n@@") ? DetectionScore(0.5, "Unified diff") : nil
+        // A unified-diff header is very specific; it must outrank YAML, which also starts with "---".
+        let isUnified = (s.hasPrefix("--- ") || s.hasPrefix("diff --git ")) && s.contains("\n+++ ") && s.contains("\n@@")
+        return isUnified ? DetectionScore(0.9, "Unified diff") : nil
     }
 }

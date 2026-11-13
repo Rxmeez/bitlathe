@@ -436,6 +436,8 @@ private struct SmartResult: View {
                     } else {
                         Text("No result").foregroundStyle(Palette.subtle).frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
+                    // Narrow the result down ($.user.id). On the session that made it, which for a chain is the second step.
+                    if let session = model.resultSession, QueryBar.applies(to: session.tool) { QueryBar(session: session) }
                 }
             }
         }

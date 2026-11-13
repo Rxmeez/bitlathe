@@ -259,6 +259,7 @@ public struct OutputPane: View {
             } else {
                 Spacer().frame(maxWidth: .infinity, maxHeight: .infinity).background(Palette.editorBackground)
             }
+            if QueryBar.applies(to: session.tool) { QueryBar(session: session) }
         }
     }
 }
@@ -466,5 +467,96 @@ struct ResultHeader: View {
         .padding(.vertical, Space.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Palette.editorBackground)
+    }
+}
+
+// MARK: - Query bar
+
+/// A filter line under a result, for tools with a `query` option (JSON: `$.user.id` or `.user.id`). Typing narrows
+/// the result as you go; the keys of what is showing are offered as chips, so a document can be drilled into by
+/// clicking. ⌘/ puts the cursor in it; Esc clears the query, then leaves the field.
+public struct QueryBar: View {
+    @Bindable var session: ToolSession
+    @FocusState private var focused: Bool
+
+    public init(session: ToolSession) { self.session = session }
+
+    public static func applies(to tool: AnyTool) -> Bool {
+        tool.optionFields.contains { field in
+            if field.key == "query", case .text = field.kind { return true }
+            return false
+        }
+    }
+
+    private var query: String { session.option("query").stringValue }
+    private var binding: Binding<String> {
+        Binding(get: { query }, set: { session.setOption("query", .string($0)) })
+    }
+    private var placeholder: String {
+        return session.tool.id == "json.format" ? "Filter, e.g. $.user.id" : "Filter"
+    }
+
+    public var body: some View {
+        HStack(spacing: Space.sm) {
+            Image(systemName: "line.3.horizontal.decrease.circle").foregroundStyle(query.isEmpty ? Palette.subtle : Palette.accent)
+                .accessibilityHidden(true)
+            TextField(placeholder, text: binding)
+                .textFieldStyle(.plain)
+                .font(.system(.callout, design: .monospaced))
+                .autocorrectionDisabled()
+                .focused($focused)
+                .frame(minWidth: 140, idealWidth: 220, maxWidth: query.isEmpty ? 260 : 360)
+                .onExitCommand { if query.isEmpty { focused = false } else { binding.wrappedValue = "" } }
+                .accessibilityLabel("Filter the result")
+            if !query.isEmpty {
+                Button { binding.wrappedValue = ""; focused = true } label: { Image(systemName: "xmark.circle.fill") }
+                    .buttonStyle(.plain).foregroundStyle(Palette.subtle).help("Clear the filter (Esc)")
+            }
+            let steps = Self.nextSteps(in: session.error == nil ? session.outputText : "")
+            if !steps.isEmpty {
+                Divider().frame(height: 14)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Space.xs) {
+                        ForEach(steps, id: \.self) { step in
+                            Button(step) { binding.wrappedValue = (query.isEmpty ? "$" : query) + step }
+                                .buttonStyle(.plain)
+                                .font(Typography.captionMono)
+                                .padding(.horizontal, Space.sm).padding(.vertical, 2)
+                                .background(Palette.raised, in: RoundedRectangle(cornerRadius: Radius.small, style: .continuous))
+                                .help("Narrow to \((query.isEmpty ? "$" : query) + step)")
+                        }
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+            if !query.isEmpty, let matches = session.output?.metadata.first(where: { $0.label == "Matches" }), session.error == nil {
+                Text(matches.value == "1" ? "1 match" : "\(matches.value) matches").font(.caption).foregroundStyle(Palette.subtle).monospacedDigit()
+            }
+            Text("⌘/").font(.caption2.monospaced()).foregroundStyle(Palette.subtle)
+                .padding(.horizontal, 4).padding(.vertical, 1)
+                .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Palette.separator))
+                .help("Jump to the filter")
+        }
+        .padding(.horizontal, Space.lg)
+        .frame(height: 32)
+        .background(Palette.chrome)
+        .overlay(alignment: .top) { Divider() }
+        .background(
+            Button("Filter the result") { focused = true }.keyboardShortcut("/", modifiers: .command)
+                .opacity(0).allowsHitTesting(false).accessibilityHidden(true)
+        )
+    }
+
+    /// The ways further into the JSON that is showing: `.key` for each key of an object (plain names only),
+    /// `[0]` and `[*]` for an array. Nothing for scalars, large results, or text that is not JSON.
+    static func nextSteps(in output: String) -> [String] {
+        guard !output.isEmpty, output.utf8.count <= 256 * 1024, let data = output.data(using: .utf8),
+              let value = try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]) else { return [] }
+        if let array = value as? [Any] { return array.isEmpty ? [] : ["[0]", "[*]"] }
+        guard value is [String: Any] else { return [] }
+        // JSONSerialization does not keep key order; read it from the text so chips follow the document.
+        let keys = (value as? [String: Any] ?? [:]).keys.filter { $0.range(of: #"^[A-Za-z_][A-Za-z0-9_]*$"#, options: .regularExpression) != nil }
+        let ordered = keys.sorted { (output.range(of: "\"\($0)\"")?.lowerBound ?? output.endIndex) < (output.range(of: "\"\($1)\"")?.lowerBound ?? output.endIndex) }
+        return ordered.prefix(12).map { "." + $0 }
     }
 }

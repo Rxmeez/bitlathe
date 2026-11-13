@@ -20,7 +20,7 @@ The home screen is a single box. Bitlathe recognises what you paste, runs the be
 
 ### Format, validate and explore JSON
 
-Format, minify and validate JSON (also JSON5 and JSONC input), switch to a collapsible tree with search and copy-path, run JSONPath or jq-style queries, and validate against a JSON Schema.
+Format, minify and validate JSON (also JSON5 and JSONC input), filter it from the bar under the result (`$.user.id`; ⌘/ jumps there, and the keys on show are chips you can click to drill in), switch to a collapsible tree with search and copy-path, run JSONPath or jq-style queries, and validate against a JSON Schema.
 
 | Light | Dark |
 |---|---|

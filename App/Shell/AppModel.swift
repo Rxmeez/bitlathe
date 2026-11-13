@@ -56,6 +56,10 @@ final class AppModel {
             selectedToolID = Self.homeID
             if let b64 = defaults.string(forKey: "BLHomeText64"), let d = Data(base64Encoded: b64), let t = String(data: d, encoding: .utf8) {
                 smartBox.paste(t)
+                // `-BLHomeQuery '$.user.id'` types into the result's filter bar once the first result is in.
+                if let q = defaults.string(forKey: "BLHomeQuery") {
+                    Task { try? await Task.sleep(for: .milliseconds(900)); smartBox.resultSession?.setOption("query", .string(q)) }
+                }
             }
         }
         if let id = defaults.string(forKey: "BLTool"), let tool = registry.tool(id) {

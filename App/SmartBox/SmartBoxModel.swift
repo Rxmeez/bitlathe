@@ -142,6 +142,12 @@ final class SmartBoxModel {
         if action.opensTool { session = nil; chainSession = nil; return }
         let input = action.inputOverride ?? text
         if keepSession, let s = session, s.tool.id == action.tool.id {
+            // Different data (a paste over the old text, not an edit to it): a filter written for the old data
+            // would silently hide the new one, so it goes.
+            let filtered = [s, chainSession].compactMap { $0 }.filter { !$0.option("query").stringValue.isEmpty }
+            if !filtered.isEmpty, abs(input.count - s.inputText.count) > max(16, s.inputText.count / 5) {
+                filtered.forEach { $0.setOption("query", .string("")) }
+            }
             s.inputText = input              // same action, new text: the session debounces and re-runs
         } else {
             let s = ToolSession(tool: action.tool, input: input, options: action.options)

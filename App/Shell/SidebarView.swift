@@ -56,6 +56,7 @@ struct SidebarView: View {
 struct ToolRow: View {
     let tool: AnyTool
     @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow // url-scheme:
 
     var body: some View {
         Label {
@@ -82,7 +83,7 @@ struct ToolRow: View {
     }
 
     private func openNewWindow(_ tool: AnyTool) {
-        // Opens an additional main window; the new window selects the tool.
-        if let url = URL(string: "bitlathe://tool/\(tool.id)") { NSWorkspace.shared.open(url) }
+        // url-scheme: a new, independent window (own AppModel/sessions) showing this tool.
+        openWindow(id: "tool-window", value: "\(tool.id)#\(UUID().uuidString)")
     }
 }

@@ -65,6 +65,23 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: com.bitlathe.app
             CFBundleURLSchemes: [bitlathe]
+        # url-scheme: Services menu entries (provider: App/Integrations/ServiceProvider.swift)
+        NSServices:
+          - NSMenuItem: {default: "Bitlathe: Format JSON"}
+            NSMessage: formatJSON
+            NSPortName: Bitlathe
+            NSSendTypes: [NSStringPboardType]
+            NSReturnTypes: [NSStringPboardType]
+          - NSMenuItem: {default: "Bitlathe: Decode Base64"}
+            NSMessage: decodeBase64
+            NSPortName: Bitlathe
+            NSSendTypes: [NSStringPboardType]
+            NSReturnTypes: [NSStringPboardType]
+          - NSMenuItem: {default: "Bitlathe: Smart Transform"}
+            NSMessage: smartTransform
+            NSPortName: Bitlathe
+            NSSendTypes: [NSStringPboardType]
+            NSReturnTypes: [NSStringPboardType]
         NSAppleEventsUsageDescription: Bitlathe uses Apple Events only for the Services menu.
         ITSAppUsesNonExemptEncryption: false
     settings:

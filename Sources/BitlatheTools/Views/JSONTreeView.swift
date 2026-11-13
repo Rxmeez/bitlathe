@@ -291,7 +291,7 @@ private struct JSONOutputPane: View {
                     Spacer()
                     Image(systemName: session.isRunning ? "hourglass" : "arrow.right.circle")
                         .font(.system(size: 28, weight: .light)).foregroundStyle(.quaternary)
-                    Text("Results appear here as you type").font(.callout).foregroundStyle(.tertiary)
+                    Text("Results appear here as you type").font(.callout).foregroundStyle(Palette.subtle)
                     Spacer()
                 }
                 .frame(maxWidth: .infinity).background(Palette.editorBackground)
@@ -357,7 +357,7 @@ private struct JSONTreePane: View {
                 ProgressView().controlSize(.small)
                     .frame(maxWidth: .infinity, maxHeight: .infinity).background(Palette.editorBackground)
             } else if model.rows.isEmpty {
-                Text("No matches").font(.callout).foregroundStyle(.tertiary)
+                Text("No matches").font(.callout).foregroundStyle(Palette.subtle)
                     .frame(maxWidth: .infinity, maxHeight: .infinity).background(Palette.editorBackground)
             } else {
                 ScrollView(.vertical) {
@@ -415,7 +415,7 @@ private struct JSONTreeRow: View {
                 .lineLimit(1)
             TypeBadge(value: node.value)
             if node.isContainer {
-                Text(countLabel).font(.caption).foregroundStyle(.tertiary)
+                Text(countLabel).font(.caption).foregroundStyle(Palette.subtle)
             } else {
                 Text(JSONTreePath.preview(node.value))
                     .font(Typography.mono)

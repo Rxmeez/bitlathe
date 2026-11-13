@@ -400,7 +400,7 @@ struct DiffToolView: View {
         case nil:
             VStack(spacing: Space.sm) {
                 Image(systemName: "arrow.left.and.right.text.vertical").font(.system(size: 28, weight: .light)).foregroundStyle(.quaternary)
-                Text(showInputs ? "The diff appears here as you type" : "Nothing to compare yet").font(.callout).foregroundStyle(.tertiary)
+                Text(showInputs ? "The diff appears here as you type" : "Nothing to compare yet").font(.callout).foregroundStyle(Palette.subtle)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Palette.editorBackground)
@@ -509,18 +509,20 @@ struct SideBySideRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
-            side(item.left, tint: Palette.danger, filled: item.kind == .delete || item.kind == .change)
+            side(item.left, tint: Palette.danger, filled: item.kind == .delete || item.kind == .change,
+                 state: item.kind == .delete || item.kind == .change ? "Removed" : nil)
             Rectangle().fill(Palette.separator).frame(width: 1)
-            side(item.right, tint: Palette.success, filled: item.kind == .insert || item.kind == .change)
+            side(item.right, tint: Palette.success, filled: item.kind == .insert || item.kind == .change,
+                 state: item.kind == .insert || item.kind == .change ? "Added" : nil)
         }
         .fixedSize(horizontal: false, vertical: true)
     }
 
-    private func side(_ cell: DiffCell?, tint: Color, filled: Bool) -> some View {
+    private func side(_ cell: DiffCell?, tint: Color, filled: Bool, state: String?) -> some View {
         HStack(alignment: .top, spacing: 0) {
             Text(cell.map { String($0.no) } ?? "")
                 .font(Typography.monoSmall.monospacedDigit())
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Palette.subtle)
                 .frame(width: CGFloat(digits) * 8 + Space.lg, alignment: .trailing)
                 .padding(.trailing, Space.sm)
                 .frame(maxHeight: .infinity, alignment: .top)
@@ -537,6 +539,7 @@ struct SideBySideRow: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(cell == nil ? Palette.raised.opacity(0.6) : (filled ? tint.opacity(0.10) : Color.clear))
         .accessibilityElement(children: .combine)
+        .accessibilityLabel(cell == nil ? "No line" : [state, cell.map { "line \($0.no)" }, cell?.text].compactMap { $0 }.joined(separator: ", "))
     }
 }
 
@@ -563,7 +566,7 @@ struct UnifiedRow: View {
             }
         }
         .font(Typography.monoSmall.monospacedDigit())
-        .foregroundStyle(.tertiary)
+        .foregroundStyle(Palette.subtle)
         .padding(.trailing, Space.sm)
         .background(filled ? tint.opacity(0.10) : Color.clear)
         .accessibilityElement(children: .combine)

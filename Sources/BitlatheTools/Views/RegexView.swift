@@ -201,7 +201,7 @@ struct RegexView: View {
                                     Text("\(m.range.lowerBound)–\(m.range.upperBound)").foregroundStyle(.secondary)
                                     ForEach(0..<groupCount, id: \.self) { i in
                                         if i < m.groups.count, let t = m.groups[i].text { cell(t, color: .green) }
-                                        else { Text("—").foregroundStyle(.tertiary) }
+                                        else { Text("—").foregroundStyle(Palette.subtle) }
                                     }
                                 }
                             }

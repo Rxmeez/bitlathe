@@ -19,6 +19,7 @@ public final class ToastCenter {
 
     public func show(_ message: String, symbol: String = "checkmark.circle.fill") {
         withAnimation(Motion.animation()) { current = Toast(message: message, symbol: symbol) }
+        NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested, userInfo: [.announcement: message])
         hideTask?.cancel()
         hideTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(1400))
@@ -253,16 +254,16 @@ public struct EmptyState: View {
             Image(systemName: symbol)
                 .font(.system(size: 36, weight: .light))
                 .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
             Text(title).font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
             if acceptsClipboard {
                 Button { onPaste() } label: { Label("Paste from clipboard", systemImage: "doc.on.clipboard") }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.regular)
-                    .keyboardShortcut("v", modifiers: [.command, .option])
             }
             if !samples.isEmpty {
                 VStack(spacing: Space.sm) {
-                    Text("Try a sample").font(.caption).foregroundStyle(.tertiary)
+                    Text("Try a sample").font(.caption).foregroundStyle(Palette.subtle)
                     FlowLayout(spacing: Space.sm, rowSpacing: Space.sm) {
                         ForEach(samples.prefix(4)) { s in
                             Chip(s.title, symbol: "sparkle") { onSample(s) }

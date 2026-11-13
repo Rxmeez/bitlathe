@@ -82,11 +82,14 @@ public struct ToolHeader: View {
                 .menuIndicator(.hidden)
                 .fixedSize()
                 .help("More actions")
+                .accessibilityLabel("More actions")
                 Button { session.copyOutput() } label: { Label("Copy", systemImage: "doc.on.doc") }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.regular)
                     .disabled(session.output == nil)
                     .help("Copy output (⌘⇧C)")
+                    .accessibilityLabel("Copy output")
+                    .accessibilityHint("Shortcut Command Shift C")
             }
         }
         .padding(.horizontal, Space.lg)
@@ -249,8 +252,9 @@ public struct OutputPane: View {
                     Image(systemName: session.isRunning ? "hourglass" : "arrow.right.circle")
                         .font(.system(size: 28, weight: .light))
                         .foregroundStyle(.quaternary)
+                        .accessibilityHidden(true)
                     Text(session.tool.io.input == .none ? "Generating…" : "Results appear here as you type")
-                        .font(.callout).foregroundStyle(.tertiary)
+                        .font(.callout).foregroundStyle(Palette.subtle)
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
@@ -342,7 +346,7 @@ public struct StatusStrip: View {
     public var body: some View {
         HStack(spacing: Space.lg) {
             if session.tool.io.input != .none, !session.hasInput {
-                Text("Ready").foregroundStyle(.tertiary)
+                Text("Ready").foregroundStyle(Palette.subtle)
             } else if session.tool.io.input != .none {
                 let bytes = session.inputPayload.byteCount
                 Text("\(ByteFormatter.string(bytes))").help("Input size")

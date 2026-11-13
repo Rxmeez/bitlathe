@@ -130,6 +130,7 @@ public struct CodeEditor: NSViewRepresentable {
         private var lastConfig: EditorConfig?
         private var lastLanguage: CodeLanguage?
         private var isUpdating = false
+        private var lastAnnouncedError: String?
         private var highlightWork: DispatchWorkItem?
 
         init(_ parent: CodeEditor) { self.parent = parent }
@@ -145,6 +146,10 @@ public struct CodeEditor: NSViewRepresentable {
             defer { isUpdating = false }
             tv.isEditable = p.isEditable
             tv.placeholder = p.placeholder
+            let lang = p.language == .plain ? "" : ", \(p.language.displayName)"
+            tv.setAccessibilityLabel((p.isEditable ? "Input editor" : "Output editor") + lang)
+            tv.setAccessibilityHelp(p.placeholder.isEmpty ? nil : p.placeholder)
+            announceErrorIfNeeded(p.error, in: tv)
             tv.highlightCurrentLine = p.config.highlightCurrentLine && p.isEditable
 
             let configChanged = lastConfig != p.config
@@ -243,6 +248,18 @@ public struct CodeEditor: NSViewRepresentable {
             highlightWork = work
             let length = textView?.textStorage?.length ?? 0
             DispatchQueue.main.asyncAfter(deadline: .now() + (length > 100_000 ? 0.25 : 0.05), execute: work)
+        }
+
+        /// Exposes the current error as the editor's accessibility value suffix and announces it once when it appears.
+        private func announceErrorIfNeeded(_ error: ToolError?, in tv: NSTextView) {
+            let message = error.map { "Error: \($0.message)" + ($0.location.map { " at \($0)" } ?? "") }
+            guard message != lastAnnouncedError else { return }
+            lastAnnouncedError = message
+            tv.setAccessibilityRoleDescription(message == nil ? nil : "text area with error")
+            if let message {
+                NSAccessibility.post(element: tv, notification: .announcementRequested,
+                                     userInfo: [.announcement: message, .priority: NSAccessibilityPriorityLevel.high.rawValue])
+            }
         }
 
         func applyAnnotations(_ p: CodeEditor) {

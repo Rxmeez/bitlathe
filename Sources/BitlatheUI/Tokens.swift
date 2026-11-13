@@ -69,9 +69,19 @@ public enum Typography {
 public enum Palette {
     public static let appAccentLight = Color(red: 0.24, green: 0.48, blue: 1.0)
     public static let appAccentDark = Color(red: 0.36, green: 0.58, blue: 1.0)
-    public static let success = Color.green
-    public static let warning = Color.orange
-    public static let danger = Color.red
+    // Status colours are tuned so text in them reaches WCAG AA (>= 4.5:1) on chrome and on their own 14% tint,
+    // in light and dark (system green/orange are only ~2.1:1 on white).
+    public static let success = adaptive(light: (0.04, 0.42, 0.16), dark: (0.30, 0.85, 0.45))
+    public static let warning = adaptive(light: (0.60, 0.28, 0.0), dark: (1.0, 0.65, 0.25))
+    public static let danger = adaptive(light: (0.70, 0.07, 0.06), dark: (1.0, 0.50, 0.47))
+    /// Low-emphasis text that still meets AA (system tertiary label is only ~1.9:1 light / 2.3:1 dark).
+    public static let subtle = adaptive(light: (0.38, 0.38, 0.38), dark: (0.66, 0.66, 0.66))
+    private static func adaptive(light: (CGFloat, CGFloat, CGFloat), dark: (CGFloat, CGFloat, CGFloat)) -> Color {
+        Color(nsColor: NSColor(name: nil) { a in
+            let c = a.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
+            return NSColor(srgbRed: c.0, green: c.1, blue: c.2, alpha: 1)
+        })
+    }
     public static let editorBackground = Color(nsColor: .textBackgroundColor)
     public static let raised = Color(nsColor: .quaternarySystemFill)
     public static let separator = Color(nsColor: .separatorColor)

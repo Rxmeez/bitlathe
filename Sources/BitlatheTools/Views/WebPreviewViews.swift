@@ -206,7 +206,7 @@ private struct WebPreviewScreen<Badges: View, Menus: View>: View {
                     } else {
                         VStack(spacing: Space.sm) {
                             Image(systemName: "safari").font(.system(size: 28, weight: .light)).foregroundStyle(.quaternary)
-                            Text("The live preview appears here").font(.callout).foregroundStyle(.tertiary)
+                            Text("The live preview appears here").font(.callout).foregroundStyle(Palette.subtle)
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }

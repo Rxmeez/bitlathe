@@ -75,7 +75,6 @@ struct DropZone: View {
                     Button("Choose…") { session.openFile() }
                         .buttonStyle(.borderedProminent)
                     Button { session.pasteFromClipboard() } label: { Label("Paste", systemImage: "doc.on.clipboard") }
-                        .keyboardShortcut("v", modifiers: [.command, .option])
                 }
                 .controlSize(.regular)
                 .fixedSize()
@@ -201,9 +200,9 @@ struct FileCard: View {
                         .textSelection(.enabled)
                     Text(facts(values)).font(.callout).foregroundStyle(.secondary)
                     if let date = values?.contentModificationDate {
-                        Text("Modified \(date.formatted(date: .abbreviated, time: .shortened))").font(.caption).foregroundStyle(.tertiary)
+                        Text("Modified \(date.formatted(date: .abbreviated, time: .shortened))").font(.caption).foregroundStyle(Palette.subtle)
                     }
-                    Text(url.deletingLastPathComponent().path).font(.caption).foregroundStyle(.tertiary)
+                    Text(url.deletingLastPathComponent().path).font(.caption).foregroundStyle(Palette.subtle)
                         .lineLimit(1).truncationMode(.head)
                 }
                 VStack(spacing: Space.sm) {
@@ -270,7 +269,7 @@ struct BinaryOutputCard: View {
             ZStack {
                 Palette.editorBackground
                 VStack(spacing: Space.lg) {
-                    Image(nsImage: icon).resizable().interpolation(.high).frame(width: 64, height: 64)
+                    Image(nsImage: icon).resizable().interpolation(.high).frame(width: 64, height: 64).accessibilityHidden(true)
                     VStack(spacing: Space.xs) {
                         Text(fileName).font(.headline).lineLimit(2).multilineTextAlignment(.center).textSelection(.enabled)
                         Text([type?.localizedDescription ?? "Binary data", ByteFormatter.string(data.count)].joined(separator: " · "))
@@ -279,7 +278,6 @@ struct BinaryOutputCard: View {
                     VStack(spacing: Space.sm) {
                         Button { session.saveOutput() } label: { Label("Save…", systemImage: "square.and.arrow.down") }
                             .buttonStyle(.borderedProminent)
-                            .keyboardShortcut("s", modifiers: [.command, .shift])
                         Button { Clipboard.copy(data.base64EncodedString()) } label: { Label("Copy as Base64", systemImage: "doc.on.doc") }
                     }
                     .controlSize(.regular)

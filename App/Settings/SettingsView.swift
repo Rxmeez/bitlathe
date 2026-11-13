@@ -16,6 +16,10 @@ struct SettingsView: View {
             ToolsSettings().frame(width: 580, height: 560).tabItem { Label("Tools", systemImage: "wrench.and.screwdriver") }
             ScriptsSettings().frame(width: 580, height: 560).tabItem { Label("Scripts", systemImage: "scroll") } // scripts:
             IntegrationsSettings().frame(width: 580, height: 560).tabItem { Label("Integrations", systemImage: "puzzlepiece.extension") } // integrations:
+            // release: Updates tab, Direct build only (Mac App Store updates itself).
+            #if DIRECT_DISTRIBUTION
+            UpdatesSettings().frame(width: 580, height: 230).tabItem { Label("Updates", systemImage: "arrow.triangle.2.circlepath") }
+            #endif
             AdvancedSettings().frame(width: 580, height: 300).tabItem { Label("Advanced", systemImage: "slider.horizontal.3") }
         }
     }

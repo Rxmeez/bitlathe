@@ -27,12 +27,20 @@ settings:
 packages:
   BitlathePackage:
     path: .
-targets:
-  Bitlathe:
+  # release: Sparkle is the only extra dependency; linked into the Direct target only.
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    exactVersion: 2.6.4
+# release: both app targets share this template (same sources, same entitlements except where overridden below).
+targetTemplates:
+  BitlatheApp:
     type: application
     platform: macOS
     sources:
       - path: App
+        excludes:
+          - "Info*.plist"
+          - "*.entitlements"
     dependencies:
       - package: BitlathePackage
         product: BitlatheCore
@@ -43,18 +51,7 @@ targets:
       # quicklook: embed the preview extension in Contents/PlugIns
       - target: BitlatheQuickLook
         embed: true
-    entitlements:
-      path: App/Bitlathe.entitlements
-      properties:
-        com.apple.security.app-sandbox: true
-        com.apple.security.files.user-selected.read-write: true
-        com.apple.security.files.bookmarks.app-scope: true
-        # Required by WebKit's renderer process inside the App Sandbox, even for local HTML.
-        # Every remote load is blocked by the previews' content rule list; see Docs/Decisions.md.
-        com.apple.security.network.client: true
-        com.apple.security.print: true
     info:
-      path: App/Info.plist
       properties:
         CFBundleName: Bitlathe
         CFBundleDisplayName: Bitlathe
@@ -107,12 +104,71 @@ targets:
               public.filename-extension: [csr, p10]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.bitlathe.app
         PRODUCT_NAME: Bitlathe
-        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DIRECT_DISTRIBUTION"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_PREVIEWS: YES
         COMBINE_HIDPI_IMAGES: YES
+targets:
+  Bitlathe:
+    templates: [BitlatheApp]
+    entitlements:
+      path: App/Bitlathe.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-write: true
+        com.apple.security.files.bookmarks.app-scope: true
+        # Required by WebKit's renderer process inside the App Sandbox, even for local HTML.
+        # Every remote load is blocked by the previews' content rule list; see Docs/Decisions.md.
+        com.apple.security.network.client: true
+        com.apple.security.print: true
+        # release: Sparkle's sandboxed installer/launcher XPC services (Direct build only).
+        com.apple.security.temporary-exception.mach-lookup.global-name:
+          - "$(PRODUCT_BUNDLE_IDENTIFIER)-spks"
+          - "$(PRODUCT_BUNDLE_IDENTIFIER)-spki"
+    info:
+      path: App/Info.plist
+      properties:
+        # release: Sparkle. SU_FEED_URL / SU_PUBLIC_ED_KEY are build settings (see Docs/Release.md).
+        SUFeedURL: "$(SU_FEED_URL)"
+        SUPublicEDKey: "$(SU_PUBLIC_ED_KEY)"
+        SUEnableInstallerLauncherService: true
+        SUEnableAutomaticChecks: false
+    dependencies:
+      - package: Sparkle
+        product: Sparkle
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bitlathe.app
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DIRECT_DISTRIBUTION"
+        SU_FEED_URL: https://github.com/Rxmeez/bitlathe/releases/latest/download/appcast.xml
+        SU_PUBLIC_ED_KEY: ""
+        # release: the embed-cli phase runs `swift build`, which a user-script sandbox would block.
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+    postCompileScripts:
+      - name: Embed bl CLI (Helpers/bl)
+        script: |
+          "$SRCROOT/scripts/embed-cli.sh"
+        basedOnDependencyAnalysis: false
+    scheme:
+      testTargets: []
+      gatherCoverageData: false
+  # release: Mac App Store build. No Sparkle, no DIRECT_DISTRIBUTION, sandbox-only entitlements.
+  Bitlathe-AppStore:
+    templates: [BitlatheApp]
+    entitlements:
+      path: App/Bitlathe-AppStore.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-write: true
+        com.apple.security.files.bookmarks.app-scope: true
+        com.apple.security.network.client: true
+        com.apple.security.print: true
+    info:
+      path: App/Info-AppStore.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bitlathe.app
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) APP_STORE"
     scheme:
       testTargets: []
       gatherCoverageData: false

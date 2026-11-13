@@ -91,7 +91,8 @@ struct CommandPalette: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Command palette")
         .task {
-            recentInputs = (try? await DataStore.shared.recentInputs(limit: 20)) ?? []
+            // One row per text: the same input run through two tools is still one thing to pick up again.
+            recentInputs = (try? await DataStore.shared.latestInputs(limit: 20)) ?? []
             #if DEBUG
             if let q = UserDefaults.standard.string(forKey: "BLPaletteQuery") { query = q }
             #endif

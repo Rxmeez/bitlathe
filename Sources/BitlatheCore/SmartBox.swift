@@ -383,6 +383,26 @@ public enum SmartBox {
                 return make("time.unix", [:], title: "Current time", input: "now", reason: "The time right now in every format")
                     .map { Command(name: "now", actions: [$0]) }
             }
+            // A time from now: "in 2 hours", "3 days ago", "90 minutes from now". Worked out here, then shown in every format.
+            if let m = s.wholeMatch(of: /(?:(in)\s+)?(\d{1,5})\s*(second|sec|minute|min|hour|hr|day|week|month|year)s?(?:\s+(ago|from now|later))?/),
+               (m.1 != nil) != (m.4 != nil), let n = Int(m.2) {
+                let unit: Calendar.Component
+                switch m.3 {
+                case "second", "sec": unit = .second
+                case "minute", "min": unit = .minute
+                case "hour", "hr": unit = .hour
+                case "day": unit = .day
+                case "week": unit = .weekOfYear
+                case "month": unit = .month
+                default: unit = .year
+                }
+                let past = m.4 == "ago"
+                if let date = Calendar.current.date(byAdding: unit, value: past ? -n : n, to: Date()) {
+                    return make("time.unix", [:], title: text.prefix(1).uppercased() + text.dropFirst(),
+                                input: String(Int(date.timeIntervalSince1970)), reason: "Counted from now, in every format")
+                        .map { Command(name: "date", actions: [$0]) }
+                }
+            }
             // A date in words: "tomorrow 9am", "next friday", "15 March 2024 at 10:30".
             if s.contains(where: \.isLetter), s.contains(" ") || ["tomorrow", "yesterday", "tonight", "noon", "midnight"].contains(s),
                let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue) {

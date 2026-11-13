@@ -168,6 +168,14 @@ final class SmartBoxTests: XCTestCase {
             XCTAssertEqual(a.actions.first?.tool.id, "time.unix", s)
         }
         XCTAssertNotEqual(try analyse("meet me tomorrow about the release").actions.first?.tool.id, "time.unix", "a date inside a sentence is not a date")
+        // Counted from now.
+        let soon = try XCTUnwrap(try analyse("in 2 hours").actions.first)
+        XCTAssertEqual(soon.tool.id, "time.unix")
+        let stamp = try XCTUnwrap(Double(try XCTUnwrap(soon.inputOverride)))
+        XCTAssertEqual(stamp, Date().timeIntervalSince1970 + 7200, accuracy: 5)
+        let before = try XCTUnwrap(Double(try XCTUnwrap(try analyse("3 days ago").actions.first?.inputOverride)))
+        XCTAssertEqual(before, Date().timeIntervalSince1970 - 3 * 86400, accuracy: 3700, "a clock change may move it an hour")
+        XCTAssertNotEqual(try analyse("2 hours").actions.first?.inputOverride.flatMap(Double.init) ?? 0, stamp, "a bare duration is not a time")
     }
 
     func testProseIsNotMistakenForAnInstruction() throws {

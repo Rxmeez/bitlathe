@@ -16,9 +16,19 @@ struct BitlatheApp: App {
                 .toastOverlay()
                 .background(MainWindowOpenerCapture()) // menubar:
                 .capturesOpenWindow() // url-scheme:
+                // scratchpad: DEBUG screenshot harness hook (no-op in release)
+                .scratchpadDebugLaunch()
         }
         .defaultSize(width: 1280, height: 820)
         .commands { BitlatheCommands(model: model) }
+        // scratchpad: Window menu entry + Scratchpad commands
+        .commands { ScratchpadCommands() }
+
+        // scratchpad: single large autosaved editor with the in-place tool picker
+        Window("Scratchpad", id: ScratchpadWindow.id) {
+            ScratchpadView(model: ScratchpadModel.shared)
+        }
+        .defaultSize(ScratchpadView.defaultSize)
 
         // url-scheme: extra windows ("Open in new window"). Value = "<toolID>#<uuid>" so every request is a distinct window.
         WindowGroup("Bitlathe", id: "tool-window", for: String.self) { $value in

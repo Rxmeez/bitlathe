@@ -38,10 +38,12 @@ public struct CodeEditor: NSViewRepresentable {
     public var selection: Binding<NSRange>?
     public var onPaste: ((String) -> Void)?
     public var onDrop: (([URL]) -> Void)?
+    /// scratchpad: optional handle for multi-selection access and grouped in-place edits.
+    public var controller: EditorController?
 
     public init(text: Binding<String>, language: CodeLanguage = .plain, isEditable: Bool = true, placeholder: String = "",
                 error: ToolError? = nil, annotations: [Annotation] = [], config: EditorConfig, selection: Binding<NSRange>? = nil,
-                onPaste: ((String) -> Void)? = nil, onDrop: (([URL]) -> Void)? = nil) {
+                onPaste: ((String) -> Void)? = nil, onDrop: (([URL]) -> Void)? = nil, controller: EditorController? = nil) {
         _text = text
         self.language = language
         self.isEditable = isEditable
@@ -52,6 +54,7 @@ public struct CodeEditor: NSViewRepresentable {
         self.selection = selection
         self.onPaste = onPaste
         self.onDrop = onDrop
+        self.controller = controller
     }
 
     public func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -103,6 +106,7 @@ public struct CodeEditor: NSViewRepresentable {
         scroll.rulersVisible = config.lineNumbers
 
         context.coordinator.textView = tv
+        controller?.textView = tv
         context.coordinator.ruler = ruler
         context.coordinator.apply(self, initial: true)
         scroll.contentView.postsFrameChangedNotifications = true
@@ -316,6 +320,7 @@ public struct CodeEditor: NSViewRepresentable {
         public func textViewDidChangeSelection(_ notification: Notification) {
             guard let tv = textView else { return }
             parent.selection?.wrappedValue = tv.selectedRange()
+            parent.controller?.onSelectionChange?(tv.selectedRanges.map(\.rangeValue).sorted { $0.location < $1.location })
             if tv.highlightCurrentLine { tv.needsDisplay = true }
         }
 

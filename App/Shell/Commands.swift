@@ -5,6 +5,7 @@ import BitlatheUI
 struct BitlatheCommands: Commands {
     let model: AppModel
     @FocusedValue(\.toolSession) private var session
+    @FocusedValue(\.scratchpad) private var scratchpad // scratchpad: ⌘K / ⌘⇧P open the tool picker there
 
     var body: some Commands {
         CommandGroup(replacing: .pasteboard) {
@@ -21,8 +22,8 @@ struct BitlatheCommands: Commands {
             Button("Import Pipeline…") { model.pipelines.importPipeline() }
         }
         CommandMenu("Tool") {
-            Button("Command Palette…") { model.togglePalette() }.keyboardShortcut("k")
-            Button("Go to Tool or Action…") { model.togglePalette() }.keyboardShortcut("p", modifiers: [.command, .shift])
+            Button("Command Palette…") { if let scratchpad { scratchpad.openPicker() } else { model.togglePalette() } }.keyboardShortcut("k")
+            Button("Go to Tool or Action…") { if let scratchpad { scratchpad.openPicker() } else { model.togglePalette() } }.keyboardShortcut("p", modifiers: [.command, .shift])
             Divider()
             Button("Copy Output") { session?.copyOutput() }.keyboardShortcut("c", modifiers: [.command, .shift]).disabled(session?.output == nil)
             Button("Replace Clipboard with Output") { session?.replaceClipboardWithOutput() }.keyboardShortcut("v", modifiers: [.command, .shift]).disabled(session?.output == nil)

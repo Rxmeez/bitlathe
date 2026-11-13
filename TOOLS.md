@@ -121,7 +121,7 @@ Tool IDs are stable and used by the CLI (`bl <id>`), URL scheme and Shortcuts.
 ## 7–8. Scratchpad, scripts, pipelines ★
 | Feature | Status |
 |---------|--------|
-| Scratchpad window | ⬜ |
+| Scratchpad window (⌥⌘P, autosaved; ⌘⇧P or ⌘K picker applies text tools in place to each selection or the whole document as one undo step; ⌘⇧R repeats; errors inline) | ✅ |
 | User scripts (JavaScriptCore) + 10 examples | 🚧 (loader + sandboxed runner done; examples and UI pending) |
 | Pipelines (visual chain, save, export, hotkey, CLI) | ✅ visual editor (live per-step previews, reorder, tool picker, import/export `.bitlathe-pipeline`, copy CLI command, 2 seeded examples); hotkey pending |
 

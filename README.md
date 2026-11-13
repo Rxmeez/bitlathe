@@ -225,13 +225,28 @@ brew install xcodegen
 git clone https://github.com/Rxmeez/bitlathe.git
 cd bitlathe
 
-scripts/run.sh                 # generate the Xcode project, build the app (Debug) and launch it
-scripts/run.sh release         # same, Release configuration
-BUILD_ONLY=1 scripts/run.sh    # build without launching
+make install                   # build Release and install /Applications/Bitlathe.app (your everyday copy)
+make dev                       # build and launch "Bitlathe Dev" from the repo (same as scripts/run.sh)
+BUILD_ONLY=1 scripts/run.sh    # build the dev app without launching it
 
 make test                      # swift test: engine unit tests
 make cli                       # build the `bl` command-line tool
 ```
+
+### Everyday app and dev app
+
+The Release configuration builds **Bitlathe** and the Debug configuration builds **Bitlathe Dev**. They are separate apps, so you can keep using the installed one while you change and test the other.
+
+| | Bitlathe (installed) | Bitlathe Dev (repo) |
+|---|---|---|
+| Build | `make install` | `make dev` |
+| Bundle id | `com.bitlathe.app` | `com.bitlathe.app.dev` |
+| Settings, history, pipelines | its own container | its own container, starts fresh |
+| Links | `bitlathe://` | `bitlathe-dev://` |
+| Quick Panel / open shortcuts | ⌃⌥Space, ⌃⌥B | ⌃⌥⇧Space, ⌃⌥⇧B |
+| Icon | blue | amber with a DEV badge; menu bar hammer |
+
+Re-run `make install` whenever you want the installed copy to pick up your changes. It quits the installed app, replaces it and reopens it; your data stays. The local install is signed ad hoc, so it is built without the hardened runtime (see `scripts/install.sh`).
 
 `make cli` builds `.build/release/bl`. Copy it onto your `PATH` if you want it everywhere, for example `cp .build/release/bl /usr/local/bin/`.
 

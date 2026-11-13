@@ -144,7 +144,7 @@ struct InspectorView: View {
                         Text("Category: \(session.tool.category.title)").font(.caption).foregroundStyle(.secondary)
                         if !session.tool.keywords.isEmpty { Text("Keywords: " + session.tool.keywords.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary) }
                         Text("CLI: bl \(session.tool.id)").font(Typography.captionMono).foregroundStyle(.secondary)
-                        Text("URL: bitlathe://tool/\(session.tool.id)?input=…").font(Typography.captionMono).foregroundStyle(.secondary)
+                        Text("URL: \(DeepLink.appScheme)://tool/\(session.tool.id)?input=…").font(Typography.captionMono).foregroundStyle(.secondary)
                     }
                     .padding(Space.lg)
                     .frame(maxWidth: .infinity, alignment: .leading)

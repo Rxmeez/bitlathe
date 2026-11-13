@@ -1,5 +1,7 @@
 #!/bin/zsh
-# Rebuild the app and relaunch it. Usage: scripts/run.sh [debug|release]
+# Rebuild the dev app ("Bitlathe Dev") and relaunch it. Usage: scripts/run.sh [debug|release]
+# The dev app has its own bundle id, data, URL scheme and icon, so it never touches the installed /Applications/Bitlathe.app.
+# To update the installed copy, use scripts/install.sh (or `make install`).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 CONFIG="${1:-Debug}"
@@ -23,9 +25,12 @@ if ! xcodebuild -project Bitlathe.xcodeproj -scheme Bitlathe -configuration "$CO
 fi
 grep -E "warning:" "$LOG" | grep -v appintentsmetadataprocessor | sort -u || true
 echo "** BUILD SUCCEEDED **"
-APP="$DERIVED/Build/Products/$CONFIG/Bitlathe.app"
+NAME="Bitlathe Dev"; [[ "$CONFIG" == "Release" ]] && NAME="Bitlathe"
+APP="$DERIVED/Build/Products/$CONFIG/$NAME.app"
 if [[ "${BUILD_ONLY:-0}" == "1" ]]; then echo "Built $APP"; exit 0; fi
 if [[ ! -d "$APP" ]]; then echo "Build failed"; exit 1; fi
-pkill -x Bitlathe 2>/dev/null || true
+# Quit only this copy, matched by bundle path, never the installed app.
+pkill -f "$PWD/$APP/Contents/MacOS/" 2>/dev/null || true
+for _ in {1..40}; do pgrep -f "$PWD/$APP/Contents/MacOS/" >/dev/null || break; sleep 0.25; done
 open "$APP"
 echo "Launched $APP"

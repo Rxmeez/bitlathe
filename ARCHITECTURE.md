@@ -248,6 +248,13 @@ trap at runtime (see "Pipelines").
 
 ## Build and distribution
 
+Two flavours come from the build configuration (`project.yml` `BL_*` settings): Release builds **Bitlathe**
+(`com.bitlathe.app`, `bitlathe://`) and Debug builds **Bitlathe Dev** (`com.bitlathe.app.dev`, `bitlathe-dev://`,
+amber `AppIcon-Dev`, Shift added to the default hotkeys, a hammer in the menu bar). `AppFlavour.isDev` reads the bundle
+id at runtime and `DeepLink.appScheme` reads the registered scheme, so the two run side by side with separate
+containers. `scripts/install.sh` (`make install`) installs the Release flavour into `/Applications`; `scripts/run.sh`
+and `scripts/shot.sh` only ever start or stop the dev app.
+
 `project.yml` (XcodeGen) defines the `Bitlathe` app target over the local
 package; `scripts/run.sh` regenerates the project, builds with `xcodebuild` and
 launches (it takes one of three shared build slots so parallel workers do not

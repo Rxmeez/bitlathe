@@ -16,4 +16,4 @@ if ! xcodebuild -project Bitlathe.xcodeproj -scheme "$SCHEME" -configuration "$C
   die "build failed (log: $LOG)"
 fi
 grep -E "warning:" "$LOG" | grep -v appintentsmetadataprocessor | sort -u || true
-echo "** BUILD SUCCEEDED ** $SCHEME $CONFIG -> $DERIVED/Build/Products/$CONFIG/Bitlathe.app"
+echo "** BUILD SUCCEEDED ** $SCHEME $CONFIG -> $DERIVED/Build/Products/$CONFIG/$(app_name_for "$CONFIG").app"

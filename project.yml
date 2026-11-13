@@ -19,11 +19,21 @@ settings:
     SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
     GCC_TREAT_WARNINGS_AS_ERRORS: NO
     DEAD_CODE_STRIPPING: YES
+  # flavour: Debug builds "Bitlathe Dev" (own bundle id, data, URL scheme, icon) so it can run beside the
+  # installed Release "Bitlathe". AppFlavour.isDev reads the bundle id suffix at runtime.
   configs:
     Debug:
       ONLY_ACTIVE_ARCH: YES
+      BL_APP_NAME: "Bitlathe Dev"
+      BL_BUNDLE_SUFFIX: ".dev"
+      BL_URL_SCHEME: bitlathe-dev
+      BL_APP_ICON: AppIcon-Dev
     Release:
       ONLY_ACTIVE_ARCH: NO
+      BL_APP_NAME: Bitlathe
+      BL_BUNDLE_SUFFIX: ""
+      BL_URL_SCHEME: bitlathe
+      BL_APP_ICON: AppIcon
 packages:
   BitlathePackage:
     path: .
@@ -53,8 +63,8 @@ targetTemplates:
         embed: true
     info:
       properties:
-        CFBundleName: Bitlathe
-        CFBundleDisplayName: Bitlathe
+        CFBundleName: "$(BL_APP_NAME)"
+        CFBundleDisplayName: "$(BL_APP_NAME)"
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         LSMinimumSystemVersion: "$(MACOSX_DEPLOYMENT_TARGET)"
@@ -63,26 +73,26 @@ targetTemplates:
         NSPrincipalClass: NSApplication
         NSMainStoryboardFile: ""
         CFBundleURLTypes:
-          - CFBundleURLName: com.bitlathe.app
-            CFBundleURLSchemes: [bitlathe]
+          - CFBundleURLName: "$(PRODUCT_BUNDLE_IDENTIFIER)"
+            CFBundleURLSchemes: ["$(BL_URL_SCHEME)"]
         # url-scheme: Services menu entries (provider: App/Integrations/ServiceProvider.swift)
         NSServices:
-          - NSMenuItem: {default: "Bitlathe: Format JSON"}
+          - NSMenuItem: {default: "$(BL_APP_NAME): Format JSON"}
             NSMessage: formatJSON
-            NSPortName: Bitlathe
+            NSPortName: "$(BL_APP_NAME)"
             NSSendTypes: [NSStringPboardType]
             NSReturnTypes: [NSStringPboardType]
-          - NSMenuItem: {default: "Bitlathe: Decode Base64"}
+          - NSMenuItem: {default: "$(BL_APP_NAME): Decode Base64"}
             NSMessage: decodeBase64
-            NSPortName: Bitlathe
+            NSPortName: "$(BL_APP_NAME)"
             NSSendTypes: [NSStringPboardType]
             NSReturnTypes: [NSStringPboardType]
-          - NSMenuItem: {default: "Bitlathe: Smart Transform"}
+          - NSMenuItem: {default: "$(BL_APP_NAME): Smart Transform"}
             NSMessage: smartTransform
-            NSPortName: Bitlathe
+            NSPortName: "$(BL_APP_NAME)"
             NSSendTypes: [NSStringPboardType]
             NSReturnTypes: [NSStringPboardType]
-        NSAppleEventsUsageDescription: Bitlathe uses Apple Events only for the Services menu.
+        NSAppleEventsUsageDescription: "$(BL_APP_NAME) uses Apple Events only for the Services menu."
         ITSAppUsesNonExemptEncryption: false
         # quicklook: file types the Quick Look extension previews (certs use the system public.x509-certificate)
         UTExportedTypeDeclarations:
@@ -104,8 +114,9 @@ targetTemplates:
               public.filename-extension: [csr, p10]
     settings:
       base:
-        PRODUCT_NAME: Bitlathe
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        PRODUCT_NAME: "$(BL_APP_NAME)"
+        PRODUCT_MODULE_NAME: Bitlathe
+        ASSETCATALOG_COMPILER_APPICON_NAME: "$(BL_APP_ICON)"
         ENABLE_PREVIEWS: YES
         COMBINE_HIDPI_IMAGES: YES
 targets:
@@ -138,7 +149,7 @@ targets:
         product: Sparkle
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.bitlathe.app
+        PRODUCT_BUNDLE_IDENTIFIER: "com.bitlathe.app$(BL_BUNDLE_SUFFIX)"
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DIRECT_DISTRIBUTION"
         SU_FEED_URL: https://github.com/Rxmeez/bitlathe/releases/latest/download/appcast.xml
         SU_PUBLIC_ED_KEY: ""
@@ -167,7 +178,7 @@ targets:
       path: App/Info-AppStore.plist
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.bitlathe.app
+        PRODUCT_BUNDLE_IDENTIFIER: "com.bitlathe.app$(BL_BUNDLE_SUFFIX)"
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) APP_STORE"
     scheme:
       testTargets: []
@@ -193,8 +204,8 @@ targets:
     info:
       path: QuickLook/Info.plist
       properties:
-        CFBundleName: Bitlathe Quick Look
-        CFBundleDisplayName: Bitlathe Quick Look
+        CFBundleName: "$(BL_APP_NAME) Quick Look"
+        CFBundleDisplayName: "$(BL_APP_NAME) Quick Look"
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         NSExtension:
@@ -211,6 +222,6 @@ targets:
               - public.x509-certificate
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.bitlathe.app.quicklook
+        PRODUCT_BUNDLE_IDENTIFIER: "com.bitlathe.app$(BL_BUNDLE_SUFFIX).quicklook"
         PRODUCT_NAME: BitlatheQuickLook
         SKIP_INSTALL: YES

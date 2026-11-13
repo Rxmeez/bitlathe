@@ -33,6 +33,9 @@ scheme_for() {
     *) die "unknown flavour '$1' (use direct or appstore)" ;;
   esac
 }
+# Debug builds "Bitlathe Dev" (com.bitlathe.app.dev), Release builds "Bitlathe" (com.bitlathe.app). See project.yml.
+app_name_for() { [[ "$1" == "Release" ]] && echo "Bitlathe" || echo "Bitlathe Dev"; }
+
 flavour_for() { [[ "$1" == "Bitlathe-AppStore" ]] && echo appstore || echo direct; }
 
 marketing_version() { sed -nE 's/^ *MARKETING_VERSION: *"?([^"]+)"?.*/\1/p' "$ROOT/project.yml" | head -1; }

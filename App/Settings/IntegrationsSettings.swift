@@ -6,7 +6,8 @@ import BitlatheUI
 /// Settings › Integrations: `bl` CLI status, URL scheme tester, Raycast / Alfred instructions, Services note.
 struct IntegrationsSettings: View {
     @State private var cli = CLIProbe.probe()
-    @State private var testURL = "bitlathe://tool/json.format?input=%7B%22a%22%3A1%7D&action=open"
+    // The running app's own scheme, so the dev build's tester opens the dev build, not the installed app.
+    @State private var testURL = "\(DeepLink.appScheme)://tool/json.format?input=%7B%22a%22%3A1%7D&action=open"
     @State private var urlMessage = ""
     @State private var installMessage = ""
     @State private var installFailed = false
@@ -63,7 +64,7 @@ struct IntegrationsSettings: View {
                     Button("Open") { openTestURL() }.disabled(testURL.isEmpty)
                     Text(urlMessage).font(.caption).foregroundStyle(.secondary)
                 }
-                Text("bitlathe://tool/<id>?input=…&action=open|copy · bitlathe://detect?input=…")
+                Text("\(DeepLink.appScheme)://tool/<id>?input=…&action=open|copy · \(DeepLink.appScheme)://detect?input=…")
                     .font(Typography.captionMono).foregroundStyle(.secondary)
             }
 
@@ -110,7 +111,7 @@ struct IntegrationsSettings: View {
     }
 
     private func openTestURL() {
-        guard let url = URL(string: testURL.trimmingCharacters(in: .whitespaces)), url.scheme?.lowercased() == "bitlathe" else {
+        guard let url = URL(string: testURL.trimmingCharacters(in: .whitespaces)), DeepLink.acceptedSchemes.contains(url.scheme?.lowercased() ?? "") else {
             urlMessage = "Enter a bitlathe:// URL."
             return
         }

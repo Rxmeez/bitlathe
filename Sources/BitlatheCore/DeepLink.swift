@@ -29,6 +29,17 @@ public struct DeepLink: Sendable, Equatable {
     }
 
     public static let scheme = "bitlathe"
+    /// The development build ("Bitlathe Dev") registers its own scheme so it never steals links from the installed app.
+    public static let devScheme = "bitlathe-dev"
+    public static let acceptedSchemes: Set<String> = [scheme, devScheme]
+
+    /// The scheme the running app registered in its Info.plist (`bitlathe`, or `bitlathe-dev` for the dev build).
+    /// Outside an app bundle (CLI, tests) this is `bitlathe`.
+    public static var appScheme: String {
+        let types = Bundle.main.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String: Any]]
+        let schemes = types?.compactMap { $0["CFBundleURLSchemes"] as? [String] }.joined()
+        return schemes?.first { acceptedSchemes.contains($0.lowercased()) } ?? scheme
+    }
     /// Query keys that are never treated as tool options.
     public static let reservedKeys: Set<String> = ["input", "input64", "action"]
 
@@ -54,7 +65,7 @@ public struct DeepLink: Sendable, Equatable {
     // MARK: Parsing
 
     public static func parse(_ url: URL) throws -> DeepLink {
-        guard url.scheme?.lowercased() == scheme else { throw ParseError("Not a bitlathe:// URL.") }
+        guard let s = url.scheme?.lowercased(), acceptedSchemes.contains(s) else { throw ParseError("Not a bitlathe:// URL.") }
         guard let comps = URLComponents(url: url, resolvingAgainstBaseURL: false) else { throw ParseError("Malformed URL.") }
 
         // bitlathe://tool/json.format -> host "tool", path "/json.format".
@@ -138,7 +149,7 @@ public struct DeepLink: Sendable, Equatable {
     /// Build a URL for a link (docs, tests, "copy link" affordances).
     public func url() -> URL? {
         var c = URLComponents()
-        c.scheme = Self.scheme
+        c.scheme = Self.appScheme
         switch target {
         case .tool(let id): c.host = "tool"; c.path = "/" + id
         case .pipeline(let n): c.host = "pipeline"; c.path = "/" + n

@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Bitlathe Dev icon</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFB23F"/><stop offset="1" stop-color="#C2410C"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#FFE3C4"/>
+    </linearGradient>
+    <filter id="drop" x="-20%" y="-20%" width="140%" height="150%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="14"/><feOffset dy="14" result="b"/><feFlood flood-color="#000" flood-opacity=".28"/><feComposite in2="b" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glyphShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="10"/><feOffset dy="10" result="b"/><feFlood flood-color="#5A1A05" flood-opacity=".45"/><feComposite in2="b" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- macOS icon grid: 824x824 body centred on a 1024 canvas, corner radius 185 -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)" filter="url(#drop)"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#shine)"/>
+  <!-- the glyph: a turned spindle. Left half = raw bits, right half = finished profile -->
+  <g filter="url(#glyphShadow)">
+    <path d="M512,212 L709.0,212.0 L708.7,222.0 L707.6,232.0 L706.0,242.0 L703.6,252.0 L700.7,262.0 L697.2,272.0 L693.1,282.0 L688.5,292.0 L683.4,302.0 L678.0,312.0 L672.2,322.0 L666.2,332.0 L659.9,342.0 L653.5,352.0 L647.0,362.0 L640.5,372.0 L634.1,382.0 L627.8,392.0 L621.8,402.0 L616.0,412.0 L610.6,422.0 L605.5,432.0 L600.9,442.0 L596.8,452.0 L593.3,462.0 L590.4,472.0 L588.0,482.0 L586.4,492.0 L585.3,502.0 L585.0,512.0 L585.3,522.0 L586.4,532.0 L588.0,542.0 L590.4,552.0 L593.3,562.0 L596.8,572.0 L600.9,582.0 L605.5,592.0 L610.6,602.0 L616.0,612.0 L621.8,622.0 L627.8,632.0 L634.1,642.0 L640.5,652.0 L647.0,662.0 L653.5,672.0 L659.9,682.0 L666.2,692.0 L672.2,702.0 L678.0,712.0 L683.4,722.0 L688.5,732.0 L693.1,742.0 L697.2,752.0 L700.7,762.0 L703.6,772.0 L706.0,782.0 L707.6,792.0 L708.7,802.0 L709.0,812.0 L512,812 Z" fill="url(#metal)"/>
+    <g fill="#fff" fill-opacity=".92">
+    <rect x="472" y="215" width="34" height="34" rx="6"/>
+    <rect x="432" y="215" width="34" height="34" rx="6"/>
+    <rect x="392" y="215" width="34" height="34" rx="6"/>
+    <rect x="352" y="215" width="34" height="34" rx="6"/>
+    <rect x="312" y="215" width="34" height="34" rx="6"/>
+    <rect x="472" y="255" width="34" height="34" rx="6"/>
+    <rect x="432" y="255" width="34" height="34" rx="6"/>
+    <rect x="392" y="255" width="34" height="34" rx="6"/>
+    <rect x="352" y="255" width="34" height="34" rx="6"/>
+    <rect x="312" y="255" width="34" height="34" rx="6"/>
+    <rect x="472" y="295" width="34" height="34" rx="6"/>
+    <rect x="432" y="295" width="34" height="34" rx="6"/>
+    <rect x="392" y="295" width="34" height="34" rx="6"/>
+    <rect x="352" y="295" width="34" height="34" rx="6"/>
+    <rect x="472" y="335" width="34" height="34" rx="6"/>
+    <rect x="432" y="335" width="34" height="34" rx="6"/>
+    <rect x="392" y="335" width="34" height="34" rx="6"/>
+    <rect x="352" y="335" width="34" height="34" rx="6"/>
+    <rect x="472" y="375" width="34" height="34" rx="6"/>
+    <rect x="432" y="375" width="34" height="34" rx="6"/>
+    <rect x="392" y="375" width="34" height="34" rx="6"/>
+    <rect x="472" y="415" width="34" height="34" rx="6"/>
+    <rect x="432" y="415" width="34" height="34" rx="6"/>
+    <rect x="472" y="455" width="34" height="34" rx="6"/>
+    <rect x="432" y="455" width="34" height="34" rx="6"/>
+    <rect x="472" y="495" width="34" height="34" rx="6"/>
+    <rect x="432" y="495" width="34" height="34" rx="6"/>
+    <rect x="472" y="535" width="34" height="34" rx="6"/>
+    <rect x="432" y="535" width="34" height="34" rx="6"/>
+    <rect x="472" y="575" width="34" height="34" rx="6"/>
+    <rect x="432" y="575" width="34" height="34" rx="6"/>
+    <rect x="472" y="615" width="34" height="34" rx="6"/>
+    <rect x="432" y="615" width="34" height="34" rx="6"/>
+    <rect x="392" y="615" width="34" height="34" rx="6"/>
+    <rect x="472" y="655" width="34" height="34" rx="6"/>
+    <rect x="432" y="655" width="34" height="34" rx="6"/>
+    <rect x="392" y="655" width="34" height="34" rx="6"/>
+    <rect x="352" y="655" width="34" height="34" rx="6"/>
+    <rect x="472" y="695" width="34" height="34" rx="6"/>
+    <rect x="432" y="695" width="34" height="34" rx="6"/>
+    <rect x="392" y="695" width="34" height="34" rx="6"/>
+    <rect x="352" y="695" width="34" height="34" rx="6"/>
+    <rect x="472" y="735" width="34" height="34" rx="6"/>
+    <rect x="432" y="735" width="34" height="34" rx="6"/>
+    <rect x="392" y="735" width="34" height="34" rx="6"/>
+    <rect x="352" y="735" width="34" height="34" rx="6"/>
+    <rect x="312" y="735" width="34" height="34" rx="6"/>
+    <rect x="472" y="775" width="34" height="34" rx="6"/>
+    <rect x="432" y="775" width="34" height="34" rx="6"/>
+    <rect x="392" y="775" width="34" height="34" rx="6"/>
+    <rect x="352" y="775" width="34" height="34" rx="6"/>
+    <rect x="312" y="775" width="34" height="34" rx="6"/>
+    </g>
+  </g>
+  <!-- cutting edge: a thin centre line where raw becomes clean -->
+  <rect x="510" y="190" width="4" height="628" rx="2" fill="#fff" fill-opacity=".35"/>
+  <!-- dev build badge: a "DEV" pill along the bottom edge of the body -->
+  <g filter="url(#glyphShadow)">
+    <rect x="377" y="826" width="270" height="74" rx="37" fill="#1F1206" fill-opacity=".88"/>
+    <text x="512" y="878" text-anchor="middle" font-family="SF Pro Display, Helvetica Neue, Arial, sans-serif"
+          font-weight="800" font-size="50" letter-spacing="8" fill="#FFD9A8">DEV</text>
+  </g>
+</svg>

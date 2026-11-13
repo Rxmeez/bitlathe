@@ -62,7 +62,7 @@ final class MenuBarController: NSObject {
         guard statusItem == nil else { return }
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let b = item.button {
-            b.image = Self.icon("wrench.and.screwdriver")
+            b.image = Self.icon(Self.restingSymbol)
             b.target = self
             b.action = #selector(statusClicked(_:))
             b.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -75,6 +75,9 @@ final class MenuBarController: NSObject {
         if let statusItem { NSStatusBar.system.removeStatusItem(statusItem) }
         statusItem = nil
     }
+
+    /// The dev build uses a hammer so the two menu bar icons can be told apart.
+    private static var restingSymbol: String { AppFlavour.isDev ? "hammer" : "wrench.and.screwdriver" }
 
     private static func icon(_ symbol: String) -> NSImage? {
         let img = NSImage(systemSymbolName: symbol, accessibilityDescription: "Bitlathe")
@@ -140,7 +143,7 @@ final class MenuBarController: NSObject {
         flashTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(1.2))
             guard !Task.isCancelled else { return }
-            self?.statusItem?.button?.image = Self.icon("wrench.and.screwdriver")
+            self?.statusItem?.button?.image = Self.icon(Self.restingSymbol)
         }
     }
 

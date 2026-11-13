@@ -1,10 +1,16 @@
-.PHONY: generate build run test cli lint format clean build-appstore archive archive-direct archive-appstore export notarize dmg install-cli release
+# Everyday app: `make install` builds Release and installs /Applications/Bitlathe.app.
+# Development: `make dev` builds and launches "Bitlathe Dev", which runs beside it with its own data.
+.PHONY: generate build run dev install test cli lint format clean build-appstore archive archive-direct archive-appstore export notarize dmg install-cli release
 generate:
 	xcodegen generate --quiet
 build: generate
 	xcodebuild -project Bitlathe.xcodeproj -scheme Bitlathe -configuration Debug -derivedDataPath .build/DerivedData -destination 'platform=macOS' build | grep -E "error:|warning:|BUILD"
 run:
 	scripts/run.sh
+dev:
+	scripts/run.sh
+install:
+	scripts/install.sh
 test:
 	swift test
 cli:

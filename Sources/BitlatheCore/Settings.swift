@@ -30,10 +30,12 @@ public struct HotKeyCombo: Equatable, Sendable {
         guard p.count == 2, let k = UInt32(p[0]), let m = UInt32(p[1]) else { return nil }
         self.init(keyCode: k, modifiers: m)
     }
-    /// Control + Option + Space (Carbon controlKey 0x1000, optionKey 0x800).
-    public static let defaultQuickPanel = HotKeyCombo(keyCode: 49, modifiers: 0x1000 | 0x800)
-    /// Control + Option + B.
-    public static let defaultMainWindow = HotKeyCombo(keyCode: 11, modifiers: 0x1000 | 0x800)
+    /// Control + Option + Space (Carbon controlKey 0x1000, optionKey 0x800). The dev build adds Shift (0x200)
+    /// so it can run beside the installed app without the two fighting over one shortcut.
+    public static var defaultQuickPanel: HotKeyCombo { HotKeyCombo(keyCode: 49, modifiers: 0x1000 | 0x800 | devShift) }
+    /// Control + Option + B (plus Shift in the dev build).
+    public static var defaultMainWindow: HotKeyCombo { HotKeyCombo(keyCode: 11, modifiers: 0x1000 | 0x800 | devShift) }
+    private static var devShift: UInt32 { AppFlavour.isDev ? 0x200 : 0 }
 }
 
 /// Typed, observable settings backed by UserDefaults.

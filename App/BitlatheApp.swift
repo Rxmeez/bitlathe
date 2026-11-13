@@ -56,7 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // url-scheme: bitlathe:// URLs (handled here, not via .onOpenURL, so SwiftUI does not spawn a window per URL).
     @MainActor
     func application(_ application: NSApplication, open urls: [URL]) {
-        DeepLinkRouter.handle(urls.filter { $0.scheme?.lowercased() == DeepLink.scheme })
+        DeepLinkRouter.handle(urls.filter { DeepLink.acceptedSchemes.contains($0.scheme?.lowercased() ?? "") })
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

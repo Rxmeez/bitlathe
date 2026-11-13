@@ -63,7 +63,7 @@ struct GeneralSettings: View {
             }
             Section("Global shortcuts") {
                 LabeledContent("Quick Panel") { HotKeyRecorder(combo: $s.quickPanelHotKey, defaultCombo: .defaultQuickPanel) }
-                LabeledContent("Open Bitlathe") { HotKeyRecorder(combo: $s.mainWindowHotKey, defaultCombo: .defaultMainWindow) }
+                LabeledContent("Open \(AppFlavour.displayName)") { HotKeyRecorder(combo: $s.mainWindowHotKey, defaultCombo: .defaultMainWindow) }
             }
             UpdatesSection() // release: update checks (Direct build); nothing in the App Store build
         }

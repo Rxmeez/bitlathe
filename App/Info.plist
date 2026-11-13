@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Bitlathe</string>
+	<string>$(BL_APP_NAME)</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Bitlathe</string>
+	<string>$(BL_APP_NAME)</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -22,10 +22,10 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.bitlathe.app</string>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>bitlathe</string>
+				<string>$(BL_URL_SCHEME)</string>
 			</array>
 		</dict>
 	</array>
@@ -38,7 +38,7 @@
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Bitlathe uses Apple Events only for the Services menu.</string>
+	<string>$(BL_APP_NAME) uses Apple Events only for the Services menu.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Bitlathe</string>
 	<key>NSMainStoryboardFile</key>
@@ -51,12 +51,12 @@
 			<key>NSMenuItem</key>
 			<dict>
 				<key>default</key>
-				<string>Bitlathe: Format JSON</string>
+				<string>$(BL_APP_NAME): Format JSON</string>
 			</dict>
 			<key>NSMessage</key>
 			<string>formatJSON</string>
 			<key>NSPortName</key>
-			<string>Bitlathe</string>
+			<string>$(BL_APP_NAME)</string>
 			<key>NSReturnTypes</key>
 			<array>
 				<string>NSStringPboardType</string>
@@ -70,12 +70,12 @@
 			<key>NSMenuItem</key>
 			<dict>
 				<key>default</key>
-				<string>Bitlathe: Decode Base64</string>
+				<string>$(BL_APP_NAME): Decode Base64</string>
 			</dict>
 			<key>NSMessage</key>
 			<string>decodeBase64</string>
 			<key>NSPortName</key>
-			<string>Bitlathe</string>
+			<string>$(BL_APP_NAME)</string>
 			<key>NSReturnTypes</key>
 			<array>
 				<string>NSStringPboardType</string>
@@ -89,12 +89,12 @@
 			<key>NSMenuItem</key>
 			<dict>
 				<key>default</key>
-				<string>Bitlathe: Smart Transform</string>
+				<string>$(BL_APP_NAME): Smart Transform</string>
 			</dict>
 			<key>NSMessage</key>
 			<string>smartTransform</string>
 			<key>NSPortName</key>
-			<string>Bitlathe</string>
+			<string>$(BL_APP_NAME)</string>
 			<key>NSReturnTypes</key>
 			<array>
 				<string>NSStringPboardType</string>

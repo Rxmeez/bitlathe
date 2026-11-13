@@ -136,7 +136,7 @@ Tool IDs are stable and used by the CLI (`bl <id>`), URL scheme and Shortcuts.
 | Services menu | ⬜ |
 | History / favourites / pinned inputs / clipboard history | 🚧 (history, pinned inputs, favourites, usage done; clipboard capture pending) |
 | URL scheme | ⬜ |
-| App Intents | ⬜ |
+| App Intents | ✅ (Run Tool, Run Tool (File), Run Pipeline, Detect, Format JSON, Decode Base64/JWT, Unix time, UUID; see Docs/Shortcuts.md) |
 | CLI `bl` | 🚧 |
 | Raycast + Alfred | ⬜ |
 | Quick Look | ⬜ |

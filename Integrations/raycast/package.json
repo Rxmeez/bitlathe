@@ -1,0 +1,62 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "bitlathe",
+  "title": "Bitlathe",
+  "description": "Search and run Bitlathe developer tools, detect what is on your clipboard, and run saved pipelines through the bl CLI.",
+  "icon": "icon.png",
+  "author": "bitlathe",
+  "license": "MIT",
+  "platforms": ["macOS"],
+  "categories": ["Developer Tools"],
+  "commands": [
+    {
+      "name": "search-tools",
+      "title": "Search Bitlathe Tools",
+      "subtitle": "Bitlathe",
+      "description": "Browse every Bitlathe tool; open it in the app or run it on the clipboard.",
+      "mode": "view"
+    },
+    {
+      "name": "detect-clipboard",
+      "title": "Detect Clipboard",
+      "subtitle": "Bitlathe",
+      "description": "Rank Bitlathe tools for the clipboard contents and run the best match.",
+      "mode": "view"
+    },
+    {
+      "name": "run-pipeline",
+      "title": "Run Pipeline",
+      "subtitle": "Bitlathe",
+      "description": "Run a saved Bitlathe pipeline on the clipboard.",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "blPath",
+      "title": "bl Executable",
+      "description": "Absolute path to the bl command line tool. Leave empty to search /usr/local/bin, /opt/homebrew/bin and ~/.local/bin.",
+      "type": "textfield",
+      "required": false,
+      "placeholder": "/usr/local/bin/bl"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.83.0",
+    "@raycast/utils": "^1.17.0"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^1.0.11",
+    "@types/node": "20.8.10",
+    "@types/react": "18.3.3",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.4.5"
+  },
+  "scripts": {
+    "build": "ray build -e dist",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint"
+  }
+}

@@ -238,7 +238,7 @@ public struct OutputPane: View {
                     .disabled(session.output == nil)
             }
             if let error = session.error {
-                ErrorBanner(error)
+                ErrorBanner(error, onFix: { session.setOption($0.option, $0.value) })
             }
             if let out = session.output {
                 WarningBanner(out.warnings)

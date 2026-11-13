@@ -131,6 +131,45 @@ final class SmartBoxTests: XCTestCase {
         XCTAssertEqual(small.trimmingCharacters(in: .whitespacesAndNewlines), #"{"a":1}"#)
     }
 
+    func testInstructionsAsPeopleTypeThem() async throws {
+        let (_, md5) = try await run("md5 of hello")
+        XCTAssertTrue(md5.contains("5d41402abc4b2a76b9719d911017c592"), "the linking word is not hashed: " + md5)
+        let (_, decoded) = try await run("decode SGVsbG8gd29ybGQ=")
+        XCTAssertEqual(decoded.trimmingCharacters(in: .whitespacesAndNewlines), "Hello world")
+        let (_, percent) = try await run("decode hello%20world%21")
+        XCTAssertEqual(percent.trimmingCharacters(in: .whitespacesAndNewlines), "hello world!")
+        let (fmt, pretty) = try await run(#"format {"a":1}"#)
+        XCTAssertEqual(fmt.actions.first?.tool.id, "json.format", "a bracket after the word is enough; no colon needed")
+        XCTAssertTrue(pretty.contains("\"a\": 1"))
+        let (query, json) = try await run("to json a=1&b=2")
+        XCTAssertEqual(query.actions.first?.options["direction"], .string("query2json"))
+        XCTAssertTrue(json.contains("\"b\""), json)
+        XCTAssertNotEqual(try analyse("decode the message before lunch").kind, .command, "nothing decodable: not an instruction")
+    }
+
+    func testNamingAToolRunsItOnTheRest() async throws {
+        let jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"
+        let a = try analyse("jwt " + jwt)
+        XCTAssertEqual(a.kind, .command)
+        XCTAssertEqual(a.actions.first?.tool.id, "jwt.debug")
+        XCTAssertEqual(a.actions.first?.inputOverride, jwt)
+        XCTAssertTrue(a.isSensitive)
+        XCTAssertEqual(try analyse("cron */5 * * * *").actions.first?.tool.id, "cron.parse")
+        // Sentences that happen to start with a tool's name are left alone.
+        for prose in ["time flies when you are busy", "json is a fine format for config", "url of the staging server", "diff looks good to me"] {
+            XCTAssertNotEqual(try analyse(prose).kind, .command, prose)
+        }
+    }
+
+    func testDatesInWordsAndNowSynonyms() throws {
+        for s in ["tomorrow 9am", "next friday", "15 March 2024 at 10:30", "yesterday", "epoch", "unix now"] {
+            let a = try analyse(s)
+            XCTAssertEqual(a.kind, .command, s)
+            XCTAssertEqual(a.actions.first?.tool.id, "time.unix", s)
+        }
+        XCTAssertNotEqual(try analyse("meet me tomorrow about the release").actions.first?.tool.id, "time.unix", "a date inside a sentence is not a date")
+    }
+
     func testProseIsNotMistakenForAnInstruction() throws {
         // Everyday words need a colon or a new line before the data.
         for prose in ["sort the list by name before you send it", "title of the next release", "format is not known yet",

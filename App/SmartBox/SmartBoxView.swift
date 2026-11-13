@@ -426,7 +426,7 @@ private struct SmartResult: View {
                         OptionBar(session: first, hiding: hidden)
                     }
                     if let error = model.error {
-                        ErrorBanner(error)
+                        ErrorBanner(error, onFix: { first.setOption($0.option, $0.value) })
                         Spacer()
                     } else if let session = model.resultSession, let out = session.output {
                         WarningBanner(out.warnings)

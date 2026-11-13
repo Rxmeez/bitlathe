@@ -268,7 +268,7 @@ private struct JSONOutputPane: View {
                 .buttonStyle(.borderless)
                 .controlSize(.small)
             }
-            if let error = session.error { ErrorBanner(error) }
+            if let error = session.error { ErrorBanner(error, onFix: { session.setOption($0.option, $0.value) }) }
             if let out = session.output {
                 WarningBanner(out.warnings)
                 switch mode {

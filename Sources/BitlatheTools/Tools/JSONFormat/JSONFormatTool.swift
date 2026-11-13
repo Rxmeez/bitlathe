@@ -63,9 +63,11 @@ public struct JSONFormatTool: DevTool {
             } else {
                 var e2 = e
                 if options.inputMode == "json", (try? JSONParser.parse(text, options: .json5)) != nil {
-                    e2.hint = (e.hint ?? "") + (e.hint == nil ? "" : " · ") + "This parses as JSON5 — switch the input mode"
-                } else if options.inputMode != "repair", JSONRepair.repair(text) != nil {
-                    e2.hint = (e.hint ?? "") + (e.hint == nil ? "" : " · ") + "Set Input to Repair to mend it"
+                    e2.hint = (e.hint ?? "") + (e.hint == nil ? "" : " · ") + "This parses as JSON5"
+                    e2.fix = ToolError.Fix("Read as JSON5", option: "inputMode", value: .string("json5"))
+                } else if options.inputMode != "repair", let repaired = JSONRepair.repair(text) {
+                    e2.hint = "Repair would mend it: " + repaired.fixes.joined(separator: ", ")
+                    e2.fix = ToolError.Fix("Repair", option: "inputMode", value: .string("repair"))
                 }
                 throw e2
             }

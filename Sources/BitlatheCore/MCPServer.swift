@@ -143,6 +143,13 @@ public struct MCPServer: Sendable {
         guard let analysis = SmartBox.analyse(input, tools: tools), let action = analysis.actions.first(where: { !$0.opensTool }) else {
             return Self.failure("Nothing recognised. Try list_tools and run_tool.")
         }
+        // Words that name tools but carry no data ("json to yaml", "diff"): inspecting those words as a string would be
+        // an answer to a question nobody asked. Say which tools they point at instead.
+        if analysis.kind == .words, analysis.actions.first?.opensTool == true {
+            let named = analysis.actions.filter(\.opensTool).map { "\($0.tool.id) (\($0.tool.name): \($0.tool.summary))" }
+            return Self.failure("No data recognised in the input; it reads as a request. Matching tools:\n- " + named.joined(separator: "\n- ")
+                                + "\nCall run_tool with one of these ids and the data as input, or put the data after an instruction, e.g. \"to yaml {…}\".")
+        }
         var output = try await action.tool.run(text: action.inputOverride ?? input, options: action.options)
         var used = [action.tool.id]
         if let chain = SmartBox.chain(after: action, output: output.text, tools: tools), let step = chain.then {

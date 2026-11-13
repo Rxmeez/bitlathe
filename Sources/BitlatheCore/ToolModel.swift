@@ -288,6 +288,15 @@ public struct ToolError: Error, Sendable, Equatable, CustomStringConvertible, Lo
     public var hint: String?
     /// UTF-16 offset range in the input, when known.
     public var range: Range<Int>?
+    /// An option change that gets past this error ("Repair": inputMode = repair), offered as a button beside it.
+    public var fix: Fix?
+
+    public struct Fix: Sendable, Equatable {
+        public let label: String
+        public let option: String
+        public let value: OptionValue
+        public init(_ label: String, option: String, value: OptionValue) { self.label = label; self.option = option; self.value = value }
+    }
 
     public init(_ message: String, line: Int? = nil, column: Int? = nil, hint: String? = nil, range: Range<Int>? = nil) {
         self.message = message

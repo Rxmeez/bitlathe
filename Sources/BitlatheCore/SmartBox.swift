@@ -96,7 +96,20 @@ public enum SmartBox {
             return Analysis(kind: .command, formatKey: key, formatName: "Instruction", confidence: 0.97,
                             actions: rank(offered, learned: counts, tools: byID, limit: limit), isSensitive: looksSecret(intent.data))
         }
-        return plain(text, trimmed: trimmed, tools: tools, byID: byID, ignoring: ignoring, learned: learned, limit: limit)
+        let whole = plain(text, trimmed: trimmed, tools: tools, byID: byID, ignoring: ignoring, learned: learned, limit: limit)
+        // A tool's name, then data for it ("jwt eyJ…", "qr https://…"), when the text as a whole is not data.
+        if whole?.kind != .data,
+           let named = namedTool(trimmed, tools: tools, rest: { plain($0, trimmed: $0, tools: tools, byID: byID, ignoring: ignoring, learned: [:], limit: limit) }) {
+            let key = "intent:tool"
+            let offered = [named.action] + named.otherwise.filter { !$0.opensTool && $0.inputOverride == nil && $0.key != named.action.key }.map { a in
+                Action(key: a.key, tool: a.tool, options: a.options, then: nil, inputOverride: named.data, opensTool: false,
+                       title: a.title, detail: a.detail, reason: a.reason, confidence: min(a.confidence, 0.5), learned: 0)
+            }
+            let counts = (learned[key] ?? [:]).filter { k, _ in offered.contains { $0.key == k } }
+            return Analysis(kind: .command, formatKey: key, formatName: "Instruction", confidence: 0.96,
+                            actions: rank(offered, learned: counts, tools: byID, limit: limit), isSensitive: looksSecret(named.data))
+        }
+        return whole
     }
 
     /// Recognised data, or words (tool names, prose).
@@ -366,9 +379,17 @@ public enum SmartBox {
                 return Command(name: "random", actions: [first, alt].compactMap { $0 })
             }
             // "now", "today", "time", "timestamp"
-            if ["now", "today", "time", "timestamp", "date"].contains(s) {
+            if ["now", "today", "time", "timestamp", "date", "epoch", "unix", "unix time", "unix now", "current time", "time now", "timestamp now"].contains(s) {
                 return make("time.unix", [:], title: "Current time", input: "now", reason: "The time right now in every format")
                     .map { Command(name: "now", actions: [$0]) }
+            }
+            // A date in words: "tomorrow 9am", "next friday", "15 March 2024 at 10:30".
+            if s.contains(where: \.isLetter), s.contains(" ") || ["tomorrow", "yesterday", "tonight", "noon", "midnight"].contains(s),
+               let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue) {
+                let range = NSRange(text.startIndex..., in: text)
+                if let match = detector.firstMatch(in: text, range: range), match.range == range, match.date != nil {
+                    return make("time.unix", [:], title: "Date & time", reason: "A date in words, in every format").map { Command(name: "date", actions: [$0]) }
+                }
             }
             // "lorem", "lorem 3", "lorem 5 sentences"
             if let m = s.wholeMatch(of: /lorem(?:\s+ipsum)?\s*(\d{1,3})?\s*(paragraphs?|sentences?|words?)?/) {

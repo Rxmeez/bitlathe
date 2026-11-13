@@ -40,8 +40,18 @@ extension SmartBox {
                 let afterSpaces = rest.drop(while: { $0 == " " || $0 == "\t" })
                 if !separated, afterSpaces.first == ":" { rest = afterSpaces.dropFirst(); separated = true }
                 if !separated, afterSpaces.first == "\n" { separated = true }
+                // "md5 of hello", "sha256 for this: …": the linking word is not part of the data. Only for phrases that
+                // are unmistakable anyway; "title of the next release" is a sentence.
+                var data = rest.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !phrase.needsSeparator || separated {
+                    for link in ["of ", "for ", "this ", "the following ", "it "] where data.lowercased().hasPrefix(link) {
+                        data = String(data.dropFirst(link.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+                        if data.hasPrefix(":") { data = String(data.dropFirst()).trimmingCharacters(in: .whitespacesAndNewlines) }
+                    }
+                }
+                // No sentence goes on with a bracket or a quote: `format {"a":1}` is an instruction without a colon.
+                if let first = data.first, "{[<\"'".contains(first) { separated = true }
                 if phrase.needsSeparator && !separated { continue }
-                let data = rest.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !data.isEmpty, let r = phrase.resolve(data, tools) else { continue }
                 let preview = data.count > 28 ? data.prefix(28).replacingOccurrences(of: "\n", with: " ") + "…" : data.replacingOccurrences(of: "\n", with: " ")
                 let action = Action(key: SmartBox.key(r.tool.id, r.options), tool: r.tool, options: r.options, then: nil,
@@ -76,7 +86,7 @@ extension SmartBox {
             for (value, words, title) in hashes {
                 fixed(words, name: "hash", tool: "hash.generate", ["algorithm": .string(value)], title: title)
             }
-            fixed(["hash"], name: "hash", tool: "hash.generate", [:], title: "All hashes", separator: true)
+            fixed(["hash", "checksum"], name: "hash", tool: "hash.generate", [:], title: "All hashes")
 
             // Encoders: "<name> encode|decode", "encode|decode <name>", and the run-together forms.
             let codecs: [(String, [String], String)] = [
@@ -91,6 +101,15 @@ extension SmartBox {
                 }
             }
             fixed(["base64", "b64"], name: "encode", tool: "base64.text", ["mode": .string("encode")], title: "Base64 encode")
+            fixed(["encode"], name: "encode", tool: "base64.text", ["mode": .string("encode")], title: "Base64 encode", separator: true)
+            // "decode <something>": what it is says how. Nothing recognisable, no instruction.
+            out.append(Phrase(words: "decode", name: "encode", needsSeparator: false) { data, tools in
+                let decoders = tools.values.filter { $0.io.input == .text && !$0.sideEffects && choices(of: $0, "mode").contains("decode") }
+                guard let best = DetectionEngine.detect(data, tools: decoders).best else { return nil }
+                var options = best.score.options
+                options["mode"] = .string("decode")
+                return (best.tool, options, "\(best.tool.name) · Decode")
+            })
             fixed(["escape"], name: "encode", tool: "text.backslash", ["mode": .string("escape")], title: "Escape", separator: true)
             fixed(["unescape"], name: "encode", tool: "text.backslash", ["mode": .string("unescape")], title: "Unescape")
 
@@ -174,6 +193,9 @@ extension SmartBox {
                 return (tool, direction)
             }.sorted { $0.0.id < $1.0.id }
             guard candidates.count > 1 else { return candidates.first }
+            // a=1&b=2 is a query string; as YAML it would be one long word.
+            if data.range(of: #"^\??[^\s=&]+=[^\s&]*(&[^\s=&]+=[^\s&]*)*$"#, options: .regularExpression) != nil,
+               let query = candidates.first(where: { $0.1 == "query" + suffix }) { return query }
             // Several sources convert to this target (YAML, CSV, TOML, XML → JSON): the data says which.
             let sources = ["yaml": "yaml.format", "toml": "toml.format", "xml": "xml.format", "csv": "csv.viewer", "json": "json.format",
                            "md": "markdown.preview", "html": "html.format"]
@@ -201,6 +223,29 @@ extension SmartBox {
         static func shortName(_ tool: AnyTool) -> String {
             tool.name.replacingOccurrences(of: " Formatter", with: "")
         }
+    }
+
+    /// "jwt eyJ…", "qr https://example.com", "cron */5 * * * *": a tool's name, then the data for it. Counted only when
+    /// what follows is data (recognised as such, or one token that is not a plain word), so "time flies" stays prose.
+    static func namedTool(_ trimmed: String, tools: [AnyTool], rest plainRest: (String) -> Analysis?) -> (action: Action, data: String, otherwise: [Action])? {
+        guard let space = trimmed.firstIndex(where: { $0 == " " || $0 == "\n" || $0 == ":" }) else { return nil }
+        let word = trimmed[..<space].lowercased()
+        var data = trimmed[trimmed.index(after: space)...].trimmingCharacters(in: .whitespacesAndNewlines)
+        if data.hasPrefix(":") { data = String(data.dropFirst()).trimmingCharacters(in: .whitespacesAndNewlines) }
+        guard word.count >= 2, word.count <= 14, word.allSatisfy({ $0.isLetter || $0.isNumber }), !data.isEmpty, !fillerWords.contains(word) else { return nil }
+        let usable = tools.filter { $0.io.input == .text && !$0.sideEffects && $0.kind == .native }
+        guard let tool = ToolRegistry.search(word, in: usable, limit: 1).first,
+              tool.id.lowercased().hasPrefix(word + ".")
+                || tool.name.lowercased().split(whereSeparator: { !$0.isLetter && !$0.isNumber }).contains(Substring(word)) else { return nil }
+        let reading = plainRest(data)
+        let oneToken = !data.contains(where: \.isWhitespace) && data.contains(where: { !$0.isLetter })
+        guard reading?.kind == .data || oneToken else { return nil }
+        let same = reading?.actions.first { $0.tool.id == tool.id && $0.then == nil }
+        let options = same?.options ?? [:]
+        let preview = data.count > 28 ? data.prefix(28).replacingOccurrences(of: "\n", with: " ") + "…" : data.replacingOccurrences(of: "\n", with: " ")
+        let action = Action(key: key(tool.id, options), tool: tool, options: options, then: nil, inputOverride: data, opensTool: false,
+                            title: tool.name, detail: modeLabel(tool, options), reason: "You named the tool: runs on “\(preview)”", confidence: 0.96, learned: 0)
+        return (action, data, reading?.kind == .data ? reading?.actions ?? [] : [])
     }
 
     /// Filler in a request ("convert this to yaml please"): dropped before searching tools by name.

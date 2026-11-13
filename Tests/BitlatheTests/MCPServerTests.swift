@@ -69,6 +69,10 @@ final class MCPServerTests: XCTestCase {
         let hashed = try await call("smart_run", ["input": "sha256 hello"])
         XCTAssertTrue(hashed.text.contains("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"), hashed.text)
 
+        let request = try await call("smart_run", ["input": "json to yaml"])
+        XCTAssertTrue(request.isError, "words without data are not run through a string inspector")
+        XCTAssertTrue(request.text.contains("convert.yaml-json"), request.text)
+
         let ids = try await call("smart_run", ["input": "2 uuid v7"])
         XCTAssertEqual(ids.text.split(separator: "\n").filter { $0.count == 36 }.count, 2, ids.text)
 

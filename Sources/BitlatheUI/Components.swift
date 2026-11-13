@@ -187,9 +187,11 @@ public struct StatusBadge: View {
 public struct ErrorBanner: View {
     let error: ToolError
     let onJump: (() -> Void)?
-    public init(_ error: ToolError, onJump: (() -> Void)? = nil) {
+    let onFix: ((ToolError.Fix) -> Void)?
+    public init(_ error: ToolError, onJump: (() -> Void)? = nil, onFix: ((ToolError.Fix) -> Void)? = nil) {
         self.error = error
         self.onJump = onJump
+        self.onFix = onFix
     }
     public var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: Space.sm) {
@@ -201,6 +203,11 @@ public struct ErrorBanner: View {
             Spacer()
             if let loc = error.location {
                 Button(loc) { onJump?() }.buttonStyle(.link).font(.caption.monospacedDigit())
+            }
+            // The way past the error, one click away, rather than a sentence saying which control to change.
+            if let fix = error.fix, let onFix {
+                Button(fix.label) { onFix(fix) }.controlSize(.small)
+                    .help(error.hint ?? fix.label)
             }
         }
         .padding(.horizontal, Space.md)

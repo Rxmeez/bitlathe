@@ -14,6 +14,7 @@ struct SettingsView: View {
             DetectionSettings().frame(width: 580, height: 520).tabItem { Label("Detection", systemImage: "wand.and.stars") }
             HistorySettings().frame(width: 580, height: 560).tabItem { Label("History & Privacy", systemImage: "clock.arrow.circlepath") }
             ToolsSettings().frame(width: 580, height: 560).tabItem { Label("Tools", systemImage: "wrench.and.screwdriver") }
+            IntegrationsSettings().frame(width: 580, height: 560).tabItem { Label("Integrations", systemImage: "puzzlepiece.extension") } // integrations:
             AdvancedSettings().frame(width: 580, height: 300).tabItem { Label("Advanced", systemImage: "slider.horizontal.3") }
         }
     }

@@ -297,15 +297,33 @@ public struct OutputContent: View {
                     KeyValueList(output.metadata)
                 }
             } else {
-                VStack(spacing: 0) {
-                    CodeEditor(text: .constant(t), language: session.outputLanguage, isEditable: false,
-                               annotations: output.annotations.filter { $0.target == .output }, config: config)
-                    if !output.metadata.isEmpty {
-                        Divider()
-                        if MetadataStrip.fits(output.metadata) {
+                let editor = CodeEditor(text: .constant(t), language: session.outputLanguage, isEditable: false,
+                                        annotations: output.annotations.filter { $0.target == .output }, config: config)
+                if output.metadata.isEmpty || MetadataStrip.fits(output.metadata) {
+                    VStack(spacing: 0) {
+                        editor
+                        if !output.metadata.isEmpty {
+                            Divider()
                             MetadataStrip(rows: output.metadata)
+                        }
+                    }
+                } else {
+                    // A result plus a table of facts about it (a parsed URL, a decoded JWT). With room, they sit side
+                    // by side, each at full height. Stacked, the text leaves half the window empty while the table is
+                    // squeezed into a strip that has to be scrolled.
+                    GeometryReader { geo in
+                        if geo.size.width >= 760 {
+                            HStack(spacing: 0) {
+                                editor
+                                Divider()
+                                KeyValueList(output.metadata).frame(width: min(max(geo.size.width * 0.42, 340), 560))
+                            }
                         } else {
-                            KeyValueList(output.metadata).frame(maxHeight: 220)
+                            VStack(spacing: 0) {
+                                editor
+                                Divider()
+                                KeyValueList(output.metadata).frame(maxHeight: 220)
+                            }
                         }
                     }
                 }

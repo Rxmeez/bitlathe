@@ -42,7 +42,11 @@ public struct ChmodTool: DevTool {
 
     public static func parse(_ raw: String) throws -> Mode {
         var s = raw.trimmed()
-        if s.hasPrefix("chmod ") { s = String(s.dropFirst(6)).trimmed() }
+        if s.hasPrefix("chmod ") {
+            // `chmod [-R] <mode> <file…>`: keep only the mode argument.
+            let args = s.dropFirst(6).split(whereSeparator: \.isWhitespace).map(String.init)
+            s = args.first { $0.range(of: "^-[A-Za-z]{1,3}$", options: .regularExpression) == nil } ?? ""
+        }
         if let r = s.range(of: "^[0-7]{3,4}$", options: .regularExpression) {
             return Mode(bits: Int(s[r], radix: 8) ?? 0)
         }

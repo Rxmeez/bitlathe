@@ -52,7 +52,7 @@ public struct QRCodeTool: DevTool {
         var rows: [[Bool]] = []
         for y in 1..<(h - 1) {
             var row: [Bool] = []
-            for x in 1..<(w - 1) { row.append(ptr[(h - 1 - y) * w + x] < 128) }
+            for x in 1..<(w - 1) { row.append(ptr[y * w + x] < 128) }
             rows.append(row)
         }
         return rows

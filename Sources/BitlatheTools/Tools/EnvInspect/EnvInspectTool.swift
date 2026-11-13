@@ -32,6 +32,8 @@ public struct EnvInspectTool: DevTool {
         public var quoted: Bool
         public var isSecret: Bool
         public var comment: String?
+        /// Single-quoted values are literal: no `$VAR` expansion.
+        public var literal = false
     }
 
     static let secretPattern = "(?i)(secret|password|passwd|pwd|token|api[_-]?key|private[_-]?key|auth|credential|access[_-]?key|client[_-]?secret|signing|salt|dsn|connection[_-]?string|_url$|^url$)"
@@ -56,6 +58,7 @@ public struct EnvInspectTool: DevTool {
             else if key != key.uppercased(), key.range(of: "[a-z]", options: .regularExpression) != nil { warnings.append((lineNo, "Key \"\(key)\" is not UPPER_CASE")) }
             var value = rawValue.trimmed()
             var quoted = false
+            var literal = false
             var comment: String?
             if value.hasPrefix("\"") {
                 // Multi-line double-quoted value
@@ -78,6 +81,7 @@ public struct EnvInspectTool: DevTool {
                 } else { warnings.append((lineNo, "Unterminated single quote")) }
                 value = body
                 quoted = true
+                literal = true
             } else {
                 if let hash = value.range(of: " #") { comment = String(value[hash.upperBound...]).trimmed(); value = String(value[..<hash.lowerBound]).trimmed() }
                 if value.contains(" "), !value.hasPrefix("`") { warnings.append((lineNo, "Unquoted value with spaces for \(key); quote it")) }
@@ -90,7 +94,7 @@ public struct EnvInspectTool: DevTool {
                 entries.remove(at: dup)
             }
             if value.isEmpty { warnings.append((lineNo, "\(key) is empty")) }
-            entries.append(Entry(key: key, value: value, line: lineNo, quoted: quoted, isSecret: isSecret, comment: comment))
+            entries.append(Entry(key: key, value: value, line: lineNo, quoted: quoted, isSecret: isSecret, comment: comment, literal: literal))
         }
         return (entries, warnings)
     }
@@ -137,7 +141,7 @@ public struct EnvInspectTool: DevTool {
                 result.append(s[i])
                 i = s.index(after: i)
             }
-            out[idx].value = e.quoted && s.hasPrefix("'") ? e.value : result
+            out[idx].value = e.literal ? e.value : result
             map[e.key] = out[idx].value
         }
         return out
@@ -153,7 +157,7 @@ public struct EnvInspectTool: DevTool {
         guard !text.trimmed().isEmpty else { throw ToolError.emptyInput }
         var (entries, warns) = Self.parse(text)
         if options.expand { entries = Self.expand(entries) }
-        let display = entries.map { e in options.mask && e.isSecret ? Entry(key: e.key, value: Self.mask(e.value), line: e.line, quoted: e.quoted, isSecret: true, comment: e.comment) : e }
+        let display = entries.map { e in options.mask && e.isSecret ? Entry(key: e.key, value: Self.mask(e.value), line: e.line, quoted: e.quoted, isSecret: true, comment: e.comment, literal: e.literal) : e }
         var out = ""
         var lang: CodeLanguage = .plain
         let name = options.secretName.isEmpty ? "app-secrets" : options.secretName

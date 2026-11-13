@@ -36,10 +36,14 @@ public actor Database {
     public let url: URL
 
     public init(url: URL) throws {
+        try self.init(url: url, path: url.path, createParent: true)
+    }
+
+    private init(url: URL, path: String, createParent: Bool) throws {
         self.url = url
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if createParent { try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true) }
         var ptr: OpaquePointer?
-        guard sqlite3_open_v2(url.path, &ptr, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nil) == SQLITE_OK else {
+        guard sqlite3_open_v2(path, &ptr, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nil) == SQLITE_OK else {
             let msg = ptr.map { String(cString: sqlite3_errmsg($0)) } ?? "unknown"
             if let ptr { sqlite3_close_v2(ptr) }
             throw ToolError("Could not open database: \(msg)")
@@ -48,23 +52,21 @@ public actor Database {
         sqlite3_exec(ptr, "PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA synchronous=NORMAL;", nil, nil, nil)
     }
 
+    /// A private, throw-away database. Every call returns an independent store (nothing is shared or written to disk).
     public static func inMemory() throws -> Database {
-        try Database(url: URL(fileURLWithPath: ":memory:"))
+        try Database(url: URL(fileURLWithPath: ":memory:"), path: ":memory:", createParent: false)
     }
 
+    /// Runs a statement for its side effects. Without parameters the SQL may contain several statements separated by `;`.
     public func execute(_ sql: String, _ params: [SQLValue] = []) throws {
-        if params.isEmpty {
-            // sqlite3_prepare_v2 only compiles the first statement; sqlite3_exec runs a whole script (migrations).
-            guard let db else { throw ToolError("Database closed") }
-            var err: UnsafeMutablePointer<CChar>?
-            guard sqlite3_exec(db, sql, nil, nil, &err) == SQLITE_OK else {
-                let msg = err.map { String(cString: $0) } ?? "unknown"
-                sqlite3_free(err)
-                throw ToolError("SQL error: \(msg) in \(sql)")
-            }
-            return
+        guard params.isEmpty else { _ = try query(sql, params); return }
+        guard let db else { throw ToolError("Database closed") }
+        var error: UnsafeMutablePointer<CChar>?
+        guard sqlite3_exec(db, sql, nil, nil, &error) == SQLITE_OK else {
+            let message = error.map { String(cString: $0) } ?? "unknown error"
+            sqlite3_free(error)
+            throw ToolError("SQL error: \(message) in \(sql)")
         }
-        _ = try query(sql, params)
     }
 
     @discardableResult

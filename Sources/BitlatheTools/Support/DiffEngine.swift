@@ -237,9 +237,13 @@ public enum DiffEngine {
             } else {
                 let edits = diff(aa.map { JSONSerializer.string($0, options: .minified) }, ab.map { JSONSerializer.string($0, options: .minified) })
                 var pendingDeletes: [(Int, JSONValue)] = []
+                func flushDeletes() {
+                    for d in pendingDeletes { out.append(JSONChange(path: "\(path)[\(d.0)]", kind: .removed, before: JSONSerializer.string(d.1, options: .minified), after: nil)) }
+                    pendingDeletes.removeAll()
+                }
                 for e in edits {
                     switch e.op {
-                    case .equal: pendingDeletes.removeAll()
+                    case .equal: flushDeletes()   // deletions not paired with an insert are real removals
                     case .delete: pendingDeletes.append((e.oldIndex!, aa[e.oldIndex!]))   // swiftlint:disable:this force_unwrapping
                     case .insert:
                         let vb = ab[e.newIndex!]   // swiftlint:disable:this force_unwrapping
@@ -251,9 +255,7 @@ public enum DiffEngine {
                         }
                     }
                 }
-                // flush
-                let flushed = edits.filter { $0.op == .delete }.map { $0.oldIndex! }   // swiftlint:disable:this force_unwrapping
-                for d in pendingDeletes where flushed.contains(d.0) { out.append(JSONChange(path: "\(path)[\(d.0)]", kind: .removed, before: JSONSerializer.string(d.1, options: .minified), after: nil)) }
+                flushDeletes()
             }
         default:
             if a != b {

@@ -135,8 +135,11 @@ public struct HTTPReferenceTool: DevTool {
     }
 
     public static func detect(_ s: String) -> DetectionScore? {
+        // Status codes and header names are short single tokens; bail out before any per-header work on long input.
+        guard s.utf8.count <= 64 else { return nil }
+        let lowered = s.lowercased()
         if s.range(of: "^[1-5]\\d\\d$", options: .regularExpression) != nil, statuses.contains(where: { $0.name == s }) { return DetectionScore(0.6, "HTTP status code") }
-        if headers.contains(where: { $0.name.lowercased() == s.lowercased() }) { return DetectionScore(0.7, "HTTP header name") }
+        if headers.contains(where: { $0.name.lowercased() == lowered }) { return DetectionScore(0.7, "HTTP header name") }
         return nil
     }
 }

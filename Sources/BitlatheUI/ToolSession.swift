@@ -34,6 +34,10 @@ public final class ToolSession: Identifiable {
     public var openInTool: ((String, String) -> Void)?
 
     private var runTask: Task<Void, Never>?
+    /// Bumped by every run and every cancel so a stale "slow run" timer can never show the indicator again.
+    private var runGeneration = 0
+    /// How long a run may take before the "running" indicator appears.
+    public static let progressDelay: Duration = .milliseconds(150)
     private var debounceTask: Task<Void, Never>?
     private var historyTask: Task<Void, Never>?
     public static let debounce: Duration = .milliseconds(120)
@@ -96,6 +100,8 @@ public final class ToolSession: Identifiable {
 
     public func run() {
         runTask?.cancel()
+        runGeneration += 1
+        let generation = runGeneration
         let payload = inputPayload
         guard !payload.isEmpty || tool.io.input == .none else {
             output = nil
@@ -110,8 +116,8 @@ public final class ToolSession: Identifiable {
         let clock = ContinuousClock()
         runTask = Task { [weak self] in
             let slowIndicator = Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .milliseconds(150))
-                if !Task.isCancelled { self?.isRunning = true }
+                try? await Task.sleep(for: ToolSession.progressDelay)
+                if !Task.isCancelled, let self, self.runGeneration == generation { self.isRunning = true }
             }
             let start = clock.now
             let result: Result<ToolOutput, ToolError>
@@ -127,7 +133,7 @@ public final class ToolSession: Identifiable {
                 result = .failure(ToolError(error.localizedDescription))
             }
             slowIndicator.cancel()
-            guard !Task.isCancelled, let self else { return }
+            guard !Task.isCancelled, let self, self.runGeneration == generation else { return }
             self.lastDuration = clock.now - start
             self.isRunning = false
             self.runCount += 1
@@ -146,6 +152,7 @@ public final class ToolSession: Identifiable {
     }
 
     public func cancel() {
+        runGeneration += 1
         runTask?.cancel()
         isRunning = false
     }

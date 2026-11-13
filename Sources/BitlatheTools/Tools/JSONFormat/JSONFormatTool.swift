@@ -103,7 +103,7 @@ public struct JSONFormatTool: DevTool {
         default:
             if options.indent == "tab" { ser.useTabs = true; ser.indent = 1 } else { ser.indent = Int(options.indent) ?? 2 }
         }
-        let out = JSONSerializer.string(value, options: ser)
+        let out = try JSONSerializer.stringCancellable(value, options: ser)
         return ToolOutput(text: out, language: .json, metadata: metadata, warnings: warnings, isValid: isValid)
     }
 

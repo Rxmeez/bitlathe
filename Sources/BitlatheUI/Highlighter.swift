@@ -167,17 +167,40 @@ public struct Highlighter: Sendable {
     /// Applies colours to the attributed string in place (foreground colour only).
     public static func highlight(_ storage: NSMutableAttributedString, language: CodeLanguage, colors: EditorTheme.Colors, range: NSRange? = nil) {
         let full = range ?? NSRange(location: 0, length: storage.length)
+        // Above the size limit (or for plain text) one base-colour run is all the work we do: no per-token
+        // attribute runs, no regex passes, no `storage.string` copy. This keeps a 10 MB output instant.
+        if storage.length > sizeLimit || language == .plain {
+            storage.addAttribute(.foregroundColor, value: NSColor(hex: colors.text), range: full)
+            return
+        }
         storage.removeAttribute(.foregroundColor, range: full)
         storage.addAttribute(.foregroundColor, value: NSColor(hex: colors.text), range: full)
-        guard storage.length <= sizeLimit, language != .plain else { return }
         let string = storage.string
-        for r in rules(for: language) {
-            let color = NSColor(hex: Self.color(for: r.token, colors))
+        let rules = rules(for: language)
+        // Paint a token map first (later rules win, as before), then apply colour runs in ascending order.
+        // Calling addAttribute once per regex match in match order is quadratic in the number of attribute runs.
+        var map = [UInt8](repeating: 0, count: full.length)
+        for (index, r) in rules.enumerated() {
+            let tag = UInt8(index + 1)
             r.regex.enumerateMatches(in: string, options: [], range: full) { m, _, _ in
                 guard let m else { return }
                 let mr = m.range(at: r.group)
                 guard mr.location != NSNotFound, mr.length > 0 else { return }
-                storage.addAttribute(.foregroundColor, value: color, range: mr)
+                let lo = mr.location - full.location
+                for k in lo..<min(lo + mr.length, map.count) { map[k] = tag }
+            }
+        }
+        let colorsByTag = rules.map { NSColor(hex: Self.color(for: $0.token, colors)) }
+        var runStart = 0
+        var current = map.first ?? 0
+        for k in 1...max(map.count, 1) {
+            let tag = k < map.count ? map[k] : UInt8.max
+            if tag != current {
+                if current != 0, runStart < map.count {
+                    storage.addAttribute(.foregroundColor, value: colorsByTag[Int(current) - 1], range: NSRange(location: full.location + runStart, length: k - runStart))
+                }
+                runStart = k
+                current = tag
             }
         }
     }

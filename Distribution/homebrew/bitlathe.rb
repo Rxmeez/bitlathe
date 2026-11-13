@@ -16,7 +16,7 @@ cask "bitlathe" do
 
   # The app updates itself through Sparkle, so brew should not try to.
   auto_updates true
-  depends_on macos: ">= :sonoma"
+  depends_on macos: :sonoma
 
   app "Bitlathe.app"
   binary "#{appdir}/Bitlathe.app/Contents/Helpers/bl"

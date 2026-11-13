@@ -8,6 +8,7 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openSettings) private var openSettings
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @State private var onboarding = OnboardingController.shared // onboarding
 
     var body: some View {
         @Bindable var model = model
@@ -31,10 +32,15 @@ struct ContentView: View {
             }
         }
         .overlay { CommandPaletteOverlay() }
+        // onboarding: welcome sheet (first launch, or Help > Show Welcome)
+        .sheet(isPresented: $onboarding.isPresented) {
+            OnboardingView { onboarding.finish() }.interactiveDismissDisabled()
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             model.detectClipboardIfNeeded()
         }
         .onAppear {
+            onboarding.presentIfFirstLaunch() // onboarding
             model.detectClipboardIfNeeded()
             #if DEBUG
             if UserDefaults.standard.bool(forKey: "BLSettings") { openSettings() }

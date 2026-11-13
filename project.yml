@@ -40,6 +40,9 @@ targets:
         product: BitlatheUI
       - package: BitlathePackage
         product: BitlatheTools
+      # quicklook: embed the preview extension in Contents/PlugIns
+      - target: BitlatheQuickLook
+        embed: true
     entitlements:
       path: App/Bitlathe.entitlements
       properties:
@@ -67,6 +70,24 @@ targets:
             CFBundleURLSchemes: [bitlathe]
         NSAppleEventsUsageDescription: Bitlathe uses Apple Events only for the Services menu.
         ITSAppUsesNonExemptEncryption: false
+        # quicklook: file types the Quick Look extension previews (certs use the system public.x509-certificate)
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.bitlathe.jwt
+            UTTypeDescription: JSON Web Token
+            UTTypeConformsTo: [public.text]
+            UTTypeTagSpecification:
+              public.filename-extension: [jwt]
+              public.mime-type: [application/jwt]
+          - UTTypeIdentifier: com.bitlathe.json5
+            UTTypeDescription: JSON5 / JSON with Comments
+            UTTypeConformsTo: [public.json]
+            UTTypeTagSpecification:
+              public.filename-extension: [json5, jsonc]
+          - UTTypeIdentifier: com.bitlathe.csr
+            UTTypeDescription: Certificate Signing Request
+            UTTypeConformsTo: [public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [csr, p10]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.bitlathe.app
@@ -78,3 +99,45 @@ targets:
     scheme:
       testTargets: []
       gatherCoverageData: false
+  # quicklook: Quick Look preview extension (sandboxed, read-only access to the previewed file)
+  BitlatheQuickLook:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: QuickLook
+    dependencies:
+      - package: BitlathePackage
+        product: BitlatheCore
+      - package: BitlathePackage
+        product: BitlatheUI
+      - package: BitlathePackage
+        product: BitlatheTools
+    entitlements:
+      path: QuickLook/BitlatheQuickLook.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-only: true
+    info:
+      path: QuickLook/Info.plist
+      properties:
+        CFBundleName: Bitlathe Quick Look
+        CFBundleDisplayName: Bitlathe Quick Look
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.quicklook.preview
+          NSExtensionPrincipalClass: PreviewViewController
+          NSExtensionAttributes:
+            QLIsDataBasedPreview: false
+            QLSupportedContentTypes:
+              - com.bitlathe.jwt
+              - com.bitlathe.json5
+              - com.bitlathe.csr
+              - public.json
+              - public.yaml
+              - public.x509-certificate
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bitlathe.app.quicklook
+        PRODUCT_NAME: BitlatheQuickLook
+        SKIP_INSTALL: YES

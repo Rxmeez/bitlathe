@@ -139,7 +139,7 @@ Tool IDs are stable and used by the CLI (`bl <id>`), URL scheme and Shortcuts.
 | App Intents | ⬜ |
 | CLI `bl` | 🚧 |
 | Raycast + Alfred | ⬜ |
-| Quick Look | ⬜ |
+| Quick Look | 🟨 preview extension: JWT, CSR, JSON, YAML verified; cert renderer present but system preview takes precedence (Docs/QuickLook.md) |
 | On-device AI (macOS 26+) | ⬜ |
 | Settings | 🚧 |
 | Onboarding + icon | ⬜ |

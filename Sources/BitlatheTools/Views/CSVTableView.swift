@@ -462,7 +462,7 @@ private struct StatCard: View {
     @ViewBuilder func row(_ label: String, _ value: String?) -> some View {
         if let value {
             HStack(alignment: .firstTextBaseline) {
-                Text(label).font(.caption).foregroundStyle(.tertiary)
+                Text(label).font(.caption).foregroundStyle(Palette.subtle)
                 Spacer(minLength: Space.sm)
                 Text(value).font(Typography.captionMono).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
             }

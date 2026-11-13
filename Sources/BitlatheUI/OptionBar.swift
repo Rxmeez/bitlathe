@@ -142,7 +142,7 @@ struct OptionControl: View {
                         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 80)
                         .overlay(alignment: .topLeading) {
                             if stringBinding.wrappedValue.isEmpty {
-                                Text(placeholder).foregroundStyle(.tertiary).padding(Space.xs).allowsHitTesting(false)
+                                Text(placeholder).foregroundStyle(Palette.subtle).padding(Space.xs).allowsHitTesting(false)
                             }
                         }
                 }

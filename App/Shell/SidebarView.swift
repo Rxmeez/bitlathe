@@ -39,7 +39,7 @@ struct SidebarView: View {
                 Text(model.searchText.isEmpty ? "\(model.visibleTools.count) tools" : "\(model.filteredTools.count) of \(model.visibleTools.count) tools")
                     .font(.caption).foregroundStyle(.secondary).monospacedDigit()
                 Spacer()
-                SettingsLink { Image(systemName: "gearshape") }.buttonStyle(.borderless).help("Settings (⌘,)")
+                SettingsLink { Image(systemName: "gearshape") }.buttonStyle(.borderless).help("Settings (⌘,)").accessibilityLabel("Settings")
             }
             .padding(.horizontal, Space.md)
             .padding(.vertical, Space.xs)

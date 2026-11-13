@@ -106,7 +106,7 @@ struct InspectorOptionRow: View {
                         .background(Palette.raised, in: RoundedRectangle(cornerRadius: Radius.small))
                         .overlay(alignment: .topLeading) {
                             if string.wrappedValue.isEmpty {
-                                Text(placeholder).font(.callout).foregroundStyle(.tertiary).padding(Space.sm).allowsHitTesting(false)
+                                Text(placeholder).font(.callout).foregroundStyle(Palette.subtle).padding(Space.sm).allowsHitTesting(false)
                             }
                         }
                 }

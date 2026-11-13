@@ -78,7 +78,7 @@ struct DetectionBanner: View {
 
     var body: some View {
         HStack(spacing: Space.md) {
-            Image(systemName: "wand.and.stars").foregroundStyle(Palette.accent)
+            Image(systemName: "wand.and.stars").foregroundStyle(Palette.accent).accessibilityHidden(true)
             if let best = report.best {
                 Text("Clipboard looks like **\(best.score.reason)**").font(.callout)
                 Chip("Open in \(best.tool.name)", symbol: best.tool.symbol) { model.applyDetection(best) }

@@ -224,7 +224,17 @@ The full status of each feature, including what is still in progress, is in [TOO
 
 </details>
 
-## Install and build from source
+## Install
+
+```sh
+brew install --cask rxmeez/tap/bitlathe
+```
+
+Bitlathe is not notarised by Apple, so macOS blocks it the first time you open it. Click **Done** (not Move to Bin), then allow it once in **System Settings › Privacy & Security › Open Anyway**. After that it updates itself, with no more prompts. The cask also installs the `bl` command line tool.
+
+Needs macOS 14 or later. What changed in each version is in [CHANGELOG.md](CHANGELOG.md).
+
+## Build from source
 
 There are no prebuilt releases yet. To build you need macOS 14 or later, Xcode 16.4 or later, and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 
@@ -317,7 +327,7 @@ See [Docs/README.md](Docs/README.md) for an index. [ARCHITECTURE.md](ARCHITECTUR
 
 ## Licence
 
-Copyright (c) Bitlathe authors. All rights reserved. No open-source licence has been granted for the Bitlathe source code; this section will be updated if one is added.
+Bitlathe is free software, released under the [GNU General Public License v3.0](LICENSE). You may use, study, share and change it; if you distribute a changed version, it must stay under the same licence.
 
 Third-party components keep their own licences. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 

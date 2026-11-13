@@ -6,8 +6,8 @@
 #
 # This is the release path while there is no Developer ID. scripts/release.sh is the notarised path for when there is.
 #
-# Before publishing: run scripts/setup-signing-keys.sh once, set RELEASES_REPO below (and SU_FEED_URL in project.yml
-# to match), add a "## [0.2.0] - YYYY-MM-DD" section to CHANGELOG.md, and commit everything.
+# Before publishing: run scripts/setup-signing-keys.sh once, add a "## [0.2.0] - YYYY-MM-DD" section to
+# CHANGELOG.md, and commit everything.
 # Keys come from the 1Password vault "Bitlathe" (Touch ID) and never touch the repo: the certificate goes into a
 # throwaway keychain deleted on exit, and the Sparkle key is piped straight into Sparkle's tools.
 #
@@ -29,9 +29,8 @@ cd "$ROOT"
 VERSION=${1:?usage: scripts/ship.sh <version> [--dry-run]}
 DRY_RUN=${2:-}
 VAULT="Bitlathe"
-# The PUBLIC repository whose releases hold the downloads (the source repo is private, and Homebrew and Sparkle need
-# a public URL). Empty until that is decided: publishing refuses to run without it.
-RELEASES_REPO="${RELEASES_REPO:-}"
+# The public repository whose releases hold the downloads (the zip, and appcast.xml for Sparkle).
+RELEASES_REPO="${RELEASES_REPO:-Rxmeez/bitlathe}"
 TAP_REPO="Rxmeez/homebrew-tap"
 TAP="$(brew --repository 2>/dev/null)/Library/Taps/rxmeez/homebrew-tap"
 BIN="$DERIVED/SourcePackages/artifacts/sparkle/Sparkle/bin"

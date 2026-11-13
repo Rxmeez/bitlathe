@@ -123,7 +123,7 @@ Tool IDs are stable and used by the CLI (`bl <id>`), URL scheme and Shortcuts.
 |---------|--------|
 | Scratchpad window | ⬜ |
 | User scripts (JavaScriptCore) + 10 examples | 🚧 (loader + sandboxed runner done; examples and UI pending) |
-| Pipelines (visual chain, save, export, hotkey, CLI) | 🚧 (engine + `bl pipe` done; visual editor pending) |
+| Pipelines (visual chain, save, export, hotkey, CLI) | ✅ visual editor (live per-step previews, reorder, tool picker, import/export `.bitlathe-pipeline`, copy CLI command, 2 seeded examples); hotkey pending |
 
 ## App-level
 | Feature | Status |

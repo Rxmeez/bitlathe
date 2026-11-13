@@ -45,7 +45,9 @@ struct ContentView: View {
     @ViewBuilder
     private var detail: some View {
         @Bindable var model = model
-        if let session = model.currentSession {
+        if let tool = model.selectedTool, tool.kind == .pipeline, let editor = model.pipelines.editor(forToolID: tool.id) { // pipelines:
+            PipelineEditorView(editor: editor).id(editor.pipelineID)
+        } else if let session = model.currentSession {
             VStack(spacing: 0) {
                 if let report = model.detectionReport { DetectionBanner(report: report) }
                 ToolScreen(session: session)

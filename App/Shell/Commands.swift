@@ -15,6 +15,11 @@ struct BitlatheCommands: Commands {
             Divider()
             Button("Smart Paste") { model.smartPaste() }.keyboardShortcut("v", modifiers: [.command, .option])
         }
+        // pipelines:
+        CommandGroup(after: .newItem) {
+            Button("New Pipeline") { model.pipelines.create() }.keyboardShortcut("n", modifiers: [.command, .option])
+            Button("Import Pipeline…") { model.pipelines.importPipeline() }
+        }
         CommandMenu("Tool") {
             Button("Command Palette…") { model.togglePalette() }.keyboardShortcut("k")
             Button("Go to Tool or Action…") { model.togglePalette() }.keyboardShortcut("p", modifiers: [.command, .shift])

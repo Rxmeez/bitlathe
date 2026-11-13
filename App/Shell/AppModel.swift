@@ -21,6 +21,8 @@ final class AppModel {
         }
     }
     var searchText = ""
+    // pipelines: saved pipelines, registered as tools
+    let pipelines = PipelineLibrary()
     var favourites: [String] = []
     var frequent: [String] = []
     var recent: [String] = []
@@ -37,6 +39,7 @@ final class AppModel {
         ToolCatalog.registerAll(in: registry)
         selectedToolID = registry.tool(settings.lastToolID)?.id ?? registry.tools.first?.id
         Task { await refreshUsage() }
+        Task { await pipelines.bootstrap(model: self) } // pipelines:
         #if DEBUG
         // Screenshot harness: `open Bitlathe.app --args -BLTool json.format -BLSample 0`
         let defaults = UserDefaults.standard

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- release: Sparkle appcast template. scripts/release.sh normally lets Sparkle's generate_appcast write appcast.xml;
+     this template is the fallback (filled when sign_update or SPARKLE_ED_SIGNATURE is available). Placeholders: __VERSION__
+     __BUILD__ __URL__ __LENGTH__ __ED_SIGNATURE__ __PUBDATE__ __MIN_OS__ -->
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Bitlathe</title>
+    <link>https://github.com/Rxmeez/bitlathe</link>
+    <description>Bitlathe updates</description>
+    <language>en</language>
+    <item>
+      <title>Version __VERSION__</title>
+      <pubDate>__PUBDATE__</pubDate>
+      <sparkle:version>__BUILD__</sparkle:version>
+      <sparkle:shortVersionString>__VERSION__</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>__MIN_OS__</sparkle:minimumSystemVersion>
+      <enclosure url="__URL__" length="__LENGTH__" type="application/octet-stream" sparkle:edSignature="__ED_SIGNATURE__"/>
+    </item>
+  </channel>
+</rss>

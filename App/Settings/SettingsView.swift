@@ -14,6 +14,10 @@ struct SettingsView: View {
             DetectionSettings().frame(width: 580, height: 520).tabItem { Label("Detection", systemImage: "wand.and.stars") }
             HistorySettings().frame(width: 580, height: 560).tabItem { Label("History & Privacy", systemImage: "clock.arrow.circlepath") }
             ToolsSettings().frame(width: 580, height: 560).tabItem { Label("Tools", systemImage: "wrench.and.screwdriver") }
+            // release: Updates tab, Direct build only (Mac App Store updates itself).
+            #if DIRECT_DISTRIBUTION
+            UpdatesSettings().frame(width: 580, height: 230).tabItem { Label("Updates", systemImage: "arrow.triangle.2.circlepath") }
+            #endif
             AdvancedSettings().frame(width: 580, height: 300).tabItem { Label("Advanced", systemImage: "slider.horizontal.3") }
         }
     }

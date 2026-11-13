@@ -11,6 +11,45 @@ The App Store build has no embedded `bl`: a sandbox-inheriting helper crashes on
 non-sandboxed one fails App Store validation. Its Integrations pane should show `CLIInstaller.unavailableMessage`
 (`brew install --cask bitlathe` or the GitHub download). The Updates settings tab only exists in the Direct build.
 
+## Two ways to release the Direct build
+
+| | Script | Signing | First launch for users | Status |
+|---|---|---|---|---|
+| Self-signed | `scripts/ship.sh` | a self-signed "Bitlathe" certificate kept in 1Password | one Gatekeeper warning ("Open Anyway"), then silent updates | ready; used until there is a Developer ID |
+| Notarised | `scripts/release.sh` | Developer ID + notarisation | no warning | needs an Apple Developer Program membership |
+
+### Self-signed releases (`scripts/ship.sh`)
+
+The same pattern as Superkeys: no Apple account, a zip, a Sparkle feed, and a cask in `Rxmeez/homebrew-tap`.
+
+One-time setup:
+
+1. `make build` (so SwiftPM downloads Sparkle's tools), then `scripts/setup-signing-keys.sh`. It creates the Sparkle
+   update key and the "Bitlathe" certificate, stores both in the 1Password vault "Bitlathe", and writes the public
+   update key into `project.yml`. Commit that. Never replace these keys: installed copies would stop accepting updates.
+2. Decide where downloads live. The source repo is private, and Homebrew and Sparkle need a public URL, so the
+   script publishes to a separate **public** repo, `RELEASES_REPO` (for example `Rxmeez/bitlathe-releases`), holding
+   only the zip and `appcast.xml`. Create it, then set `SU_FEED_URL` in `project.yml` to
+   `https://github.com/<RELEASES_REPO>/releases/latest/download/appcast.xml`.
+3. `brew tap rxmeez/tap`, so the script can bump the cask.
+
+Each release:
+
+```
+# add "## [0.2.0] - YYYY-MM-DD" to CHANGELOG.md, commit
+scripts/ship.sh 0.2.0 --dry-run                               # build, sign, package; publish nothing
+RELEASES_REPO=Rxmeez/bitlathe-releases scripts/ship.sh 0.2.0   # publish
+```
+
+It runs the tests, bumps the version, builds a universal app, zips it, signs the feed, tags `v0.2.0`, creates the
+release in `RELEASES_REPO`, waits for the download to be live, and copies the cask to the tap. A dry run restores
+`project.yml` and leaves its output in `build/ship/`. `SHIP_NO_KEYS=1` keeps a dry run away from 1Password (it then
+signs ad hoc and writes no feed).
+
+The hardened runtime is off for these builds: without a team, library validation refuses the embedded
+Sparkle.framework. The App Sandbox still applies. The on-device model helper (`bl-advisor`) is built with the Command
+Line Tools when Xcode's SDK lacks FoundationModels; see Docs/Decisions.md.
+
 ## Versioning
 
 `MARKETING_VERSION` (semver, shown to users) and `CURRENT_PROJECT_VERSION` (integer build, must increase on every

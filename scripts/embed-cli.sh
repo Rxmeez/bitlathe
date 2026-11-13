@@ -64,6 +64,8 @@ else
   [[ -n "$IDENTITY" ]] || IDENTITY="-"
   for helper in bl bl-advisor; do
     if [[ "$IDENTITY" == "-" ]]; then codesign --force --sign - "$DEST/$helper"
+    # Self-signed releases (scripts/ship.sh): no Apple timestamp, and no hardened runtime, like the app itself.
+    elif [[ -n "${BL_SELF_SIGNED:-}" ]]; then codesign --force --timestamp=none ${=OTHER_CODE_SIGN_FLAGS:-} --sign "$IDENTITY" "$DEST/$helper"
     else codesign --force --options runtime --timestamp --sign "$IDENTITY" "$DEST/$helper"; fi
   done
 fi

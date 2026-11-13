@@ -18,7 +18,7 @@ public struct JSONFormatTool: DevTool {
         .segmented("mode", "Mode", [.init("format", "Format"), .init("minify", "Minify"), .init("validate", "Validate")], default: "format"),
         .picker("indent", "Indent", [.init("2", "2 spaces"), .init("4", "4 spaces"), .init("tab", "Tab")], default: "2", visibleWhen: ("mode", ["format"])),
         .toggle("sortKeys", "Sort keys"),
-        .picker("inputMode", "Input", [.init("json", "JSON"), .init("jsonc", "JSONC"), .init("json5", "JSON5")], default: "json", help: "JSONC allows comments and trailing commas; JSON5 also allows unquoted keys, single quotes and hex numbers"),
+        .picker("inputMode", "Input", [.init("json", "JSON"), .init("jsonc", "JSONC"), .init("json5", "JSON5"), .init("repair", "Repair")], default: "json", help: "JSONC allows comments and trailing commas; JSON5 also allows unquoted keys, single quotes and hex numbers; Repair mends broken JSON (missing commas, unclosed brackets, cut-off text) and lists what it changed"),
         .toggle("escapeNonASCII", "Escape non-ASCII", advanced: true),
         .toggle("escapeSlashes", "Escape slashes", advanced: true),
         .text("query", "Query", placeholder: "$.items[*].id or .items[].id", help: "JSONPath or jq-style path", advanced: true),
@@ -51,19 +51,26 @@ public struct JSONFormatTool: DevTool {
         let text = input.text
         guard !text.trimmed().isEmpty else { throw ToolError.emptyInput }
         var value: JSONValue
+        var metadata: [MetaRow] = []
+        var warnings: [String] = []
         do {
             value = try JSONParser.parse(text, options: Self.parserOptions(options.inputMode))
         } catch let e as ToolError {
-            if options.inputMode == "json", (try? JSONParser.parse(text, options: .json5)) != nil {
+            if options.inputMode == "repair", let repaired = JSONRepair.repair(text), let mended = try? JSONParser.parse(repaired.json) {
+                value = mended
+                warnings.append("Repaired: " + repaired.fixes.joined(separator: ", ") + ". Check the result against the original.")
+                metadata.append(MetaRow("Repairs", "\(repaired.fixes.count)", style: .warning))
+            } else {
                 var e2 = e
-                e2.hint = (e.hint ?? "") + (e.hint == nil ? "" : " · ") + "This parses as JSON5 — switch the input mode"
+                if options.inputMode == "json", (try? JSONParser.parse(text, options: .json5)) != nil {
+                    e2.hint = (e.hint ?? "") + (e.hint == nil ? "" : " · ") + "This parses as JSON5 — switch the input mode"
+                } else if options.inputMode != "repair", JSONRepair.repair(text) != nil {
+                    e2.hint = (e.hint ?? "") + (e.hint == nil ? "" : " · ") + "Set Input to Repair to mend it"
+                }
                 throw e2
             }
-            throw e
         }
         try Task.checkpoint()
-        var metadata: [MetaRow] = []
-        var warnings: [String] = []
 
         if !options.query.trimmed().isEmpty {
             let results = try JSONPath.evaluate(options.query, in: value)

@@ -105,13 +105,20 @@ public enum SmartBox {
 
         let usable = tools.filter { $0.io.input == .text && !$0.sideEffects && $0.kind != .pipeline }
         var report = DetectionEngine.detect(text, tools: usable, ignoring: ignoring)
-        // Broken JSON is not valid JSON, so the formatter does not claim it, yet it is the tool that shows where the
-        // mistake is. Without this the best match is whatever regex happens to fit.
-        let nearMiss = "Looks like JSON with a mistake"
-        if looksLikeBrokenJSON(trimmed), !report.results.contains(where: { $0.tool.id == "json.format" }),
-           !ignoring.contains("json.format"), let json = byID["json.format"] {
+        // Broken JSON is not valid JSON, so the formatter barely claims it (or not at all), yet it is the tool that
+        // shows where the mistake is, and can usually mend it. Without this the best match is whatever regex fits.
+        let nearMiss = "JSON with a mistake"
+        var repairAction: Action?
+        if looksLikeBrokenJSON(trimmed), !ignoring.contains("json.format"), let json = byID["json.format"],
+           (report.results.first { $0.tool.id == "json.format" }?.score.confidence ?? 0) < 0.8 {
+            report.results.removeAll { $0.tool.id == "json.format" }
             report.results.insert(DetectionResult(tool: json, score: DetectionScore(0.8, nearMiss)), at: 0)
             report.results.sort { $0.score.confidence > $1.score.confidence }
+            if trimmed.utf8.count <= 1_000_000, let repaired = JSONRepair.repair(trimmed) {
+                let options: OptionValues = ["inputMode": .string("repair")]
+                repairAction = Action(key: key(json.id, options), tool: json, options: options, then: nil, inputOverride: nil, opensTool: false,
+                                      title: "Repair JSON", detail: nil, reason: repaired.summary, confidence: 0.82, learned: 0)
+            }
         }
         if let best = report.best {
             // Weak guesses (a Base64 string "could be" an identifier for the case converter) only add noise.
@@ -124,6 +131,7 @@ public enum SmartBox {
                 action(r.tool, options: r.score.options, reason: r.score.reason, confidence: r.score.confidence)
             }
             if best.score.reason != nearMiss { actions.insert(contentsOf: modeVariants(of: best), at: min(1, actions.count)) }
+            if let repairAction { actions.insert(repairAction, at: 0) }
             let key = best.tool.id
             let sensitive = !best.tool.historyEnabledByDefault || looksSecret(trimmed)
             return Analysis(kind: .data, formatKey: key, formatName: best.score.reason, confidence: best.score.confidence,

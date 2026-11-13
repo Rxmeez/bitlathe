@@ -57,6 +57,7 @@ struct SmartBoxView: View {
         c.lineNumbers = false
         c.highlightCurrentLine = false
         c.wrap = true
+        c.horizontalInset = Space.lg - 5   // the text container pads 5 pt itself: 16 pt in all, like the bars below
         return c
     }
 
@@ -412,8 +413,10 @@ private struct SmartResult: View {
                 if action.opensTool {
                     OpenToolCard(action: action) { model.openTool() }
                 } else if let first = model.session {
-                    if !first.tool.optionFields.filter({ !$0.advanced }).isEmpty, action.then == nil {
-                        OptionBar(session: first)
+                    // A formatter's modes are already the chips above (Minify ⌘2, Validate ⌘3): one control, not two.
+                    let hidden: Set<String> = modesAreChips(for: action) ? ["mode"] : []
+                    if !first.tool.optionFields.filter({ !$0.advanced && !hidden.contains($0.key) }).isEmpty, action.then == nil {
+                        OptionBar(session: first, hiding: hidden)
                     }
                     if let error = model.error {
                         ErrorBanner(error)
@@ -429,6 +432,12 @@ private struct SmartResult: View {
                 }
             }
         }
+    }
+
+    private func modesAreChips(for action: SmartBox.Action) -> Bool {
+        guard let actions = model.analysis?.actions else { return false }
+        return actions.contains { $0.key != action.key && $0.tool.id == action.tool.id && $0.then == nil && $0.options["mode"] != nil }
+            || (action.options["mode"] != nil && actions.contains { $0.key != action.key && $0.tool.id == action.tool.id && $0.then == nil })
     }
 
     private func header(_ action: SmartBox.Action) -> some View {

@@ -12,6 +12,8 @@ public struct EditorConfig: Equatable {
     public var lineNumbers: Bool
     public var tabWidth: Int
     public var highlightCurrentLine: Bool
+    /// Space left of the text when there is no line-number gutter. The Smart Box widens it to line up with its chrome.
+    public var horizontalInset: CGFloat = Space.sm
 
     @MainActor
     public static var current: EditorConfig {
@@ -91,7 +93,7 @@ public struct CodeEditor: NSViewRepresentable {
         tv.isGrammarCheckingEnabled = false
         tv.smartInsertDeleteEnabled = false
         tv.importsGraphics = false
-        tv.textContainerInset = CGSize(width: Space.sm, height: Space.sm)
+        tv.textContainerInset = CGSize(width: config.lineNumbers ? Space.sm : config.horizontalInset, height: Space.sm)
         tv.minSize = .zero
         tv.maxSize = CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         tv.isVerticallyResizable = true

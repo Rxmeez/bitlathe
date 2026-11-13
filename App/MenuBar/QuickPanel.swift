@@ -35,8 +35,18 @@ final class QuickPanelModel {
     private var learned: SmartBox.Learned = [:]
 
     var current: SmartBox.Action? { candidates.indices.contains(selected) ? candidates[selected] : nil }
+    /// The alternatives that fit on one row with their names in full (a cut-off "St…" tells nobody anything).
+    /// Decided here, not by the layout, so ⌘1–⌘4 only ever pick a chip that is on screen.
     var alternatives: [(index: Int, action: SmartBox.Action)] {
-        candidates.enumerated().filter { $0.offset != selected }.prefix(4).map { ($0.offset, $0.element) }
+        var room = 44   // characters across the panel after "Also try"; each chip also spends 7 on its icon, shortcut and padding
+        var shown: [(index: Int, action: SmartBox.Action)] = []
+        for (i, action) in candidates.enumerated() where i != selected && shown.count < 4 {
+            let cost = action.title.count + 7
+            if cost > room, !shown.isEmpty { break }
+            room -= cost
+            shown.append((i, action))
+        }
+        return shown
     }
     var isSensitive: Bool { analysis?.isSensitive ?? false }
 
@@ -237,17 +247,10 @@ struct QuickPanelView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// As many alternatives as fit with their names in full; a cut-off "St…" tells nobody anything.
     private var alsoTry: some View {
-        ViewThatFits(in: .horizontal) {
-            ForEach([4, 3, 2, 1], id: \.self) { count in alsoTryRow(count) }
-        }
-    }
-
-    private func alsoTryRow(_ count: Int) -> some View {
         HStack(spacing: Space.sm) {
             Text("Also try").font(.caption).foregroundStyle(.secondary).fixedSize()
-            ForEach(Array(model.alternatives.prefix(count).enumerated()), id: \.element.action.key) { slot, alt in
+            ForEach(Array(model.alternatives.enumerated()), id: \.element.action.key) { slot, alt in
                 Button { model.select(alt.index) } label: {
                     HStack(spacing: Space.xs) {
                         Image(systemName: alt.action.tool.symbol).font(.caption2)
@@ -255,7 +258,6 @@ struct QuickPanelView: View {
                         Text("⌘\(slot + 1)").foregroundStyle(.tertiary)
                     }
                     .font(.caption)
-                    .fixedSize()
                     .padding(.horizontal, Space.sm).padding(.vertical, Space.xs)
                     .background(Palette.raised, in: Capsule())
                 }

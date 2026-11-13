@@ -6,16 +6,19 @@ public struct OptionBar: View {
     @Bindable var session: ToolSession
     let advanced: Bool
     let asForm: Bool
+    /// Option keys not to show (the Smart Box offers a formatter's modes as actions instead).
+    let hiding: Set<String>
 
-    public init(session: ToolSession, advanced: Bool = false, asForm: Bool = false) {
+    public init(session: ToolSession, advanced: Bool = false, asForm: Bool = false, hiding: Set<String> = []) {
         self.session = session
         self.advanced = advanced
         self.asForm = asForm
+        self.hiding = hiding
     }
 
     var fields: [OptionField] {
         session.tool.optionFields.filter { f in
-            f.advanced == advanced && isVisible(f)
+            f.advanced == advanced && isVisible(f) && !hiding.contains(f.key)
         }
     }
 

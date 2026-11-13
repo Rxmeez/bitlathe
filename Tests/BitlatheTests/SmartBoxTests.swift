@@ -171,15 +171,47 @@ final class SmartBoxTests: XCTestCase {
         XCTAssertEqual(Set(labels).count, labels.count, labels.joined(separator: ", "))
     }
 
-    func testBrokenJSONStillGetsTheFormatter() async throws {
-        let a = try analyse(#"{"name": "Bitlathe", "tags": ["a" "b"]"#)
+    func testBrokenJSONIsOfferedARepairAndTheFormatter() async throws {
+        let broken = #"{"name": "Bitlathe", "tags": ["a" "b"]"#
+        let a = try analyse(broken)
         XCTAssertEqual(a.kind, .data)
-        XCTAssertEqual(a.actions.first?.tool.id, "json.format")
-        XCTAssertEqual(a.formatName, "Looks like JSON with a mistake")
+        XCTAssertEqual(a.formatName, "JSON with a mistake")
+        XCTAssertEqual(a.actions.map(\.title).prefix(2), ["Repair JSON", "JSON Formatter"])
+        XCTAssertEqual(a.actions.first?.reason, "Added 1 missing comma, closed 1 bracket")
         XCTAssertFalse(a.actions.contains { $0.title == "Minify" }, "no point offering modes that cannot run")
+        let repair = try XCTUnwrap(a.actions.first)
+        let out = try await repair.tool.run(text: broken, options: repair.options)
+        XCTAssertEqual(out.text, "{\n  \"name\": \"Bitlathe\",\n  \"tags\": [\n    \"a\",\n    \"b\"\n  ]\n}")
+        XCTAssertTrue(out.warnings.first?.hasPrefix("Repaired: added 1 missing comma") == true, out.warnings.joined())
+        // Balanced but wrong ("looks like JSON with errors" at 55 %) must not lose to a script's regex either.
+        XCTAssertEqual(try analyse(#"{"a": 1 "b": 2}"#).actions.first?.title, "Repair JSON")
         // Valid JSON is unaffected, and text that merely starts with a bracket is not JSON.
         XCTAssertEqual(try analyse(#"{"a":1}"#).formatName.contains("mistake"), false)
         XCTAssertNotEqual(try analyse("[draft] release notes for Friday").actions.first?.tool.id, "json.format")
+    }
+
+    func testJSONRepair() throws {
+        func fix(_ s: String) -> String? { JSONRepair.repair(s)?.json }
+        XCTAssertEqual(fix(#"{"a": 1 "b": 2}"#), #"{"a":1,"b":2}"#)                                   // missing comma
+        XCTAssertEqual(fix(#"{"a": [1, 2, {"b": tru"#), #"{"a":[1,2,{"b":true}]}"#)                    // cut off
+        XCTAssertEqual(fix("{'name': 'O\\'Brien', active: True, n: None,}"), #"{"name":"O'Brien","active":true,"n":null}"#)
+        XCTAssertEqual(fix(#"{"a": "unterminated"#), #"{"a":"unterminated"}"#)
+        XCTAssertEqual(fix(#"[1, 2,, 3,]"#), "[1,2,3]")
+        XCTAssertEqual(fix("{\n  // note\n  \"a\": 0x1F, /* c */ \"b\": .5\n}"), #"{"a":31,"b":0.5}"#)
+        XCTAssertEqual(fix(#"{"a": }"#), #"{"a":null}"#)
+        XCTAssertEqual(fix(#"{"a" 1}"#), #"{"a":1}"#)
+        XCTAssertEqual(fix(#"{“a”: “b”}"#), #"{"a":"b"}"#)                                             // smart quotes
+        XCTAssertEqual(fix(#"{"when": 2024-01-05, "ok": yes}"#), #"{"when":"2024-01-05","ok":"yes"}"#)
+        XCTAssertEqual(fix("{\"a\": \"line one\nline two\"}"), #"{"a":"line one\nline two"}"#)
+        XCTAssertEqual(fix(#"{"a": [1, 2}"#), #"{"a":[1,2]}"#)                                         // wrong closer
+        XCTAssertEqual(fix(#"{"a": 1} trailing words"#), #"{"a":1}"#)
+        // Nothing to do, or not JSON at all: no result.
+        XCTAssertNil(fix(#"{"a": 1, "b": [true, null]}"#))
+        XCTAssertNil(fix("hello world"))
+        XCTAssertNil(fix(""))
+        // Strings are left alone: brackets and commas inside them are data.
+        XCTAssertEqual(fix(#"{"a": "x, [y] {z}" "b": "it's"}"#), #"{"a":"x, [y] {z}","b":"it's"}"#)
+        XCTAssertEqual(JSONRepair.repair(#"{'a': 1, 'b': 2"#)?.summary, "Closed 1 bracket, changed 2 strings to double quotes")
     }
 
     func testListsGetTheFixTheyNeed() async throws {

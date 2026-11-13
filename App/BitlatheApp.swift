@@ -14,9 +14,19 @@ struct BitlatheApp: App {
                 .environment(model)
                 .frame(minWidth: Layout.minWindow.width, minHeight: Layout.minWindow.height)
                 .toastOverlay()
+                // scratchpad: DEBUG screenshot harness hook (no-op in release)
+                .scratchpadDebugLaunch()
         }
         .defaultSize(width: 1280, height: 820)
         .commands { BitlatheCommands(model: model) }
+        // scratchpad: Window menu entry + Scratchpad commands
+        .commands { ScratchpadCommands() }
+
+        // scratchpad: single large autosaved editor with the in-place tool picker
+        Window("Scratchpad", id: ScratchpadWindow.id) {
+            ScratchpadView(model: ScratchpadModel.shared)
+        }
+        .defaultSize(ScratchpadView.defaultSize)
 
         Settings {
             SettingsView().environment(model)

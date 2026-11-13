@@ -7,22 +7,37 @@ struct SettingsView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        // Eight tabs at this width fit the toolbar without an overflow (») menu. Editor options live under
+        // Appearance and update checks under General, rather than in tabs of their own.
         TabView {
-            GeneralSettings().frame(width: 580, height: 470).tabItem { Label("General", systemImage: "gearshape") }
-            AppearanceSettings().frame(width: 580, height: 260).tabItem { Label("Appearance", systemImage: "paintbrush") }
-            EditorSettings().frame(width: 580, height: 380).tabItem { Label("Editor", systemImage: "text.cursor") }
-            DetectionSettings().frame(width: 580, height: 520).tabItem { Label("Detection", systemImage: "wand.and.stars") }
-            HistorySettings().frame(width: 580, height: 640).tabItem { Label("History & Privacy", systemImage: "clock.arrow.circlepath") }
-            ToolsSettings().frame(width: 580, height: 560).tabItem { Label("Tools", systemImage: "wrench.and.screwdriver") }
-            ScriptsSettings().frame(width: 580, height: 560).tabItem { Label("Scripts", systemImage: "scroll") } // scripts:
-            IntegrationsSettings().frame(width: 580, height: 560).tabItem { Label("Integrations", systemImage: "puzzlepiece.extension") } // integrations:
-            // release: Updates tab, Direct build only (Mac App Store updates itself).
-            #if DIRECT_DISTRIBUTION
-            UpdatesSettings().frame(width: 580, height: 230).tabItem { Label("Updates", systemImage: "arrow.triangle.2.circlepath") }
-            #endif
-            AdvancedSettings().frame(width: 580, height: 300).tabItem { Label("Advanced", systemImage: "slider.horizontal.3") }
+            GeneralSettings().frame(width: SettingsMetrics.width, height: 640).tabItem { Label("General", systemImage: "gearshape") }
+            AppearanceSettings().frame(width: SettingsMetrics.width, height: 560).tabItem { Label("Appearance", systemImage: "paintbrush") }
+            DetectionSettings().frame(width: SettingsMetrics.width, height: 520).tabItem { Label("Detection", systemImage: "wand.and.stars") }
+            HistorySettings().frame(width: SettingsMetrics.width, height: 640).tabItem { Label("History & Privacy", systemImage: "clock.arrow.circlepath") }
+            ToolsSettings().frame(width: SettingsMetrics.width, height: 560).tabItem { Label("Tools", systemImage: "wrench.and.screwdriver") }
+            ScriptsSettings().frame(width: SettingsMetrics.width, height: 560).tabItem { Label("Scripts", systemImage: "scroll") } // scripts:
+            IntegrationsSettings().frame(width: SettingsMetrics.width, height: 560).tabItem { Label("Integrations", systemImage: "puzzlepiece.extension") } // integrations:
+            AdvancedSettings().frame(width: SettingsMetrics.width, height: 300).tabItem { Label("Advanced", systemImage: "slider.horizontal.3") }
         }
     }
+}
+
+/// Explanatory text under a settings group, aligned with the group's leading edge
+/// (grouped-form footers otherwise right-align, which reads badly once they wrap).
+struct SettingsFooter: View {
+    let text: String
+    init(_ text: String) { self.text = text }
+    var body: some View {
+        Text(text).font(.caption).foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, Space.md)   // line up with the text inside the group above
+    }
+}
+
+enum SettingsMetrics {
+    /// Wide enough for every tab label in one row.
+    static let width: CGFloat = 640
 }
 
 struct GeneralSettings: View {
@@ -36,9 +51,6 @@ struct GeneralSettings: View {
                 Toggle("Open Bitlathe at login", isOn: Binding(get: { SMAppService.mainApp.status == .enabled }, set: { on in setLaunchAtLogin(on) }))
                 if let loginError { Text(loginError).font(.caption).foregroundStyle(Palette.danger) }
             }
-            Section {
-                Toggle("Detect what's on the clipboard when Bitlathe comes forward", isOn: $s.detectOnFocus)
-            }
             // menubar: Show in / Quick Panel / hotkeys
             Section {
                 Picker("Show in", selection: $s.dockMode) { ForEach(DockMode.allCases, id: \.self) { Text($0.title).tag($0) } }
@@ -47,12 +59,13 @@ struct GeneralSettings: View {
                 }
                 Toggle("Option-click the menu bar icon to copy the result", isOn: $s.quickPanelCopyOnOptionClick)
             } header: { Text("Menu bar") } footer: {
-                Text("Click the menu bar icon for the Quick Panel. It detects the clipboard and shows the result right away.").font(.caption).foregroundStyle(.secondary)
+                SettingsFooter("Click the menu bar icon for the Quick Panel. It detects the clipboard and shows the result right away.")
             }
             Section("Global shortcuts") {
                 LabeledContent("Quick Panel") { HotKeyRecorder(combo: $s.quickPanelHotKey, defaultCombo: .defaultQuickPanel) }
                 LabeledContent("Open Bitlathe") { HotKeyRecorder(combo: $s.mainWindowHotKey, defaultCombo: .defaultMainWindow) }
             }
+            UpdatesSection() // release: update checks (Direct build); nothing in the App Store build
         }
         .formStyle(.grouped)
     }
@@ -73,32 +86,31 @@ struct AppearanceSettings: View {
     var body: some View {
         @Bindable var s = settings
         Form {
-            Picker("Appearance", selection: $s.appearance) { ForEach(AppearanceMode.allCases, id: \.self) { Text($0.title).tag($0) } }
-            Toggle("Use Bitlathe accent colour", isOn: $s.useAppAccent)
-            Picker("Editor theme", selection: $s.editorTheme) { ForEach(EditorTheme.all) { Text($0.name).tag($0.id) } }
-            Toggle("Reduce motion", isOn: $s.reduceMotionOverride)
+            Section {
+                Picker("Appearance", selection: $s.appearance) { ForEach(AppearanceMode.allCases, id: \.self) { Text($0.title).tag($0) } }
+                Toggle("Use Bitlathe accent colour", isOn: $s.useAppAccent)
+                Toggle("Reduce motion", isOn: $s.reduceMotionOverride)
+            }
+            Section("Editor") {
+                Picker("Theme", selection: $s.editorTheme) { ForEach(EditorTheme.all) { Text($0.name).tag($0.id) } }
+                Picker("Font", selection: $s.editorFontName) {
+                    ForEach(["SF Mono", "Menlo", "Monaco", "Courier New", "JetBrains Mono", "Fira Code", "Source Code Pro"], id: \.self) { Text($0).tag($0) }
+                }
+                LabeledContent("Size") {
+                    HStack(spacing: Space.sm) {
+                        Slider(value: $s.editorFontSize, in: 9...24, step: 1).frame(maxWidth: 220).labelsHidden()
+                        Text("\(Int(s.editorFontSize)) pt").monospacedDigit().foregroundStyle(.secondary).frame(minWidth: 36, alignment: .trailing)
+                    }
+                }
+                Stepper("Tab width: \(s.tabWidth)", value: $s.tabWidth, in: 2...8)
+                Toggle("Wrap lines", isOn: $s.wrapLines)
+                Toggle("Show line numbers", isOn: $s.showLineNumbers)
+                Toggle("Show invisible characters", isOn: $s.showInvisibles)
+                Toggle("Highlight current line", isOn: $s.highlightCurrentLine)
+            }
         }
         .formStyle(.grouped)
         .onChange(of: settings.appearance) { _, new in AppearanceController.apply(new) }
-    }
-}
-
-struct EditorSettings: View {
-    @State private var settings = Settings.shared
-    var body: some View {
-        @Bindable var s = settings
-        Form {
-            Picker("Font", selection: $s.editorFontName) {
-                ForEach(["SF Mono", "Menlo", "Monaco", "Courier New", "JetBrains Mono", "Fira Code", "Source Code Pro"], id: \.self) { Text($0).tag($0) }
-            }
-            Slider(value: $s.editorFontSize, in: 9...24, step: 1) { Text("Size: \(Int(s.editorFontSize)) pt") }
-            Stepper("Tab width: \(s.tabWidth)", value: $s.tabWidth, in: 2...8)
-            Toggle("Wrap lines", isOn: $s.wrapLines)
-            Toggle("Show line numbers", isOn: $s.showLineNumbers)
-            Toggle("Show invisible characters", isOn: $s.showInvisibles)
-            Toggle("Highlight current line", isOn: $s.highlightCurrentLine)
-        }
-        .formStyle(.grouped)
     }
 }
 
@@ -111,12 +123,30 @@ struct DetectionSettings: View {
             Toggle("Detect clipboard when the window becomes active", isOn: $s.detectOnFocus)
             Toggle("Read the clipboard for detection", isOn: $s.detectFromClipboard)
             Toggle("Smart Paste switches tools (⌘⌥V)", isOn: $s.detectOnPaste)
-            Section("Ignore these tools during detection") {
-                ForEach(model.registry.native) { tool in
-                    Toggle(tool.name, isOn: Binding(get: { s.detectionIgnoreList.contains(tool.id) }, set: { on in
-                        if on { s.detectionIgnoreList.append(tool.id) } else { s.detectionIgnoreList.removeAll { $0 == tool.id } }
-                    }))
+            Section {
+                ForEach(ToolCategory.allCases.filter { $0 != .scripting }) { category in
+                    let tools = model.registry.tools(in: category)
+                    let ignored = tools.filter { s.detectionIgnoreList.contains($0.id) }.count
+                    if !tools.isEmpty {
+                        DisclosureGroup {
+                            ForEach(tools) { tool in
+                                Toggle(isOn: Binding(get: { s.detectionIgnoreList.contains(tool.id) }, set: { on in
+                                    if on { s.detectionIgnoreList.append(tool.id) } else { s.detectionIgnoreList.removeAll { $0 == tool.id } }
+                                })) { Label(tool.name, systemImage: tool.symbol) }
+                            }
+                        } label: {
+                            HStack {
+                                Text(category.title)
+                                Spacer()
+                                if ignored > 0 { Text("\(ignored) ignored").font(.caption).foregroundStyle(.secondary).monospacedDigit() }
+                            }
+                        }
+                    }
                 }
+            } header: {
+                Text("Ignore during detection")
+            } footer: {
+                SettingsFooter("Ignored tools are never suggested for what you paste or copy. You can still open them yourself.")
             }
         }
         .formStyle(.grouped)

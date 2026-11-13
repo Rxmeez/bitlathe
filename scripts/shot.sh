@@ -23,7 +23,7 @@ EXTRA=()
 WIN="${WINDOW_TITLE:-}"
 APPEARANCE=()
 [[ -n "${4:-}" ]] && APPEARANCE=(-bl.appearance "$4")
-open -n "$APP" --args -BLTool "$1" -BLSample "$2" "${EXTRA[@]}" "${APPEARANCE[@]}"
+open -n "$APP" --args -BLHarness YES -BLTool "$1" -BLSample "$2" "${EXTRA[@]}" "${APPEARANCE[@]}"
 sleep 2.5
 ID=$(swift - "$WIN" <<< 'import CoreGraphics; let l = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []; let want = CommandLine.arguments.dropFirst().first ?? ""; for w in l where (w[kCGWindowOwnerName as String] as? String) == "Bitlathe" && (w[kCGWindowLayer as String] as? Int) == 0 && (want.isEmpty || (w[kCGWindowName as String] as? String ?? "").contains(want)) { print(w[kCGWindowNumber as String]!); break }' 2>/dev/null)
 screencapture -x -o -l "$ID" "$3"

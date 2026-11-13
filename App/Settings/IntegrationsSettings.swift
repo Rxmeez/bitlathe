@@ -8,36 +8,52 @@ struct IntegrationsSettings: View {
     @State private var cli = CLIProbe.probe()
     @State private var testURL = "bitlathe://tool/json.format?input=%7B%22a%22%3A1%7D&action=open"
     @State private var urlMessage = ""
-    @State private var copied = ""
-
-    private static let installCommand = "swift build -c release --product bl && sudo cp .build/release/bl /usr/local/bin/bl"
+    @State private var installMessage = ""
+    @State private var installFailed = false
 
     var body: some View {
         Form {
-            Section("Command line tool (bl)") {
+            Section {
                 LabeledContent("Status") {
                     if let path = cli.path {
-                        Label("Installed", systemImage: "checkmark.circle.fill").foregroundStyle(Palette.success)
-                        Text(path).font(Typography.captionMono).textSelection(.enabled).help(path)
+                        HStack(spacing: Space.sm) {
+                            Label("Installed", systemImage: "checkmark.circle.fill").foregroundStyle(Palette.success)
+                            Text((path as NSString).abbreviatingWithTildeInPath).font(Typography.captionMono)
+                                .foregroundStyle(.secondary).textSelection(.enabled).help(path)
+                        }
                     } else {
                         Label("Not installed", systemImage: "xmark.circle").foregroundStyle(.secondary)
                     }
                 }
-                if cli.path != nil {
-                    LabeledContent("Version", value: cli.version ?? "unavailable (the sandbox may block running bl from here)")
+                if cli.path != nil, let version = cli.version {
+                    LabeledContent("Version", value: version)
                 }
-                if cli.path == nil {
-                    Text("bl is built from the Bitlathe repository. From its root, run in Terminal:")
-                        .font(.caption).foregroundStyle(.secondary)
+                if CLIInstaller.isAvailable {
                     HStack {
-                        Text(Self.installCommand).font(Typography.captionMono).textSelection(.enabled).lineLimit(2)
-                        Spacer()
-                        Button("Copy") { copy(Self.installCommand, label: "install command") }
+                        Button(cli.path == nil ? "Install bl…" : "Reinstall bl…") { install() }
+                        Button("Re-check") { cli = CLIProbe.probe() }
+                        if !installMessage.isEmpty {
+                            Text(installMessage).font(.caption).foregroundStyle(installFailed ? Palette.danger : .secondary)
+                                .lineLimit(2).textSelection(.enabled)
+                        }
                     }
-                }
-                HStack {
+                    if let link = CLIInstaller.symlinkCommand {
+                        HStack {
+                            Text(link).font(Typography.captionMono).foregroundStyle(.secondary)
+                                .textSelection(.enabled).lineLimit(1).truncationMode(.middle).help(link)
+                            Spacer()
+                            CopyButton(text: link)
+                        }
+                    }
+                } else {
+                    Text(CLIInstaller.unavailableMessage).font(.caption).foregroundStyle(.secondary)
                     Button("Re-check") { cli = CLIProbe.probe() }
-                    if !copied.isEmpty { Text("Copied \(copied).").font(.caption).foregroundStyle(.secondary) }
+                }
+            } header: {
+                Text("Command line tool (bl)")
+            } footer: {
+                if CLIInstaller.isAvailable {
+                    SettingsFooter("Install copies bl from inside Bitlathe into a folder you choose, such as /usr/local/bin. Or link it from Terminal with the command above.")
                 }
             }
 
@@ -73,16 +89,24 @@ struct IntegrationsSettings: View {
             HStack {
                 Text(title)
                 Spacer()
-                Button("Copy setup command") { copy(steps, label: title.lowercased() + " command") }
+                CopyButton(text: steps, title: "Copy setup command")
             }
             Text("\(folder)/README.md").font(Typography.captionMono).foregroundStyle(.secondary).textSelection(.enabled)
         }
     }
 
-    private func copy(_ text: String, label: String) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
-        copied = label
+    private func install() {
+        switch CLIInstaller.install() {
+        case .installed(let url):
+            installMessage = "Installed to \((url.path as NSString).abbreviatingWithTildeInPath)."
+            installFailed = false
+        case .cancelled:
+            installMessage = ""
+        case .unavailable(let message), .failed(let message):
+            installMessage = message
+            installFailed = true
+        }
+        cli = CLIProbe.probe()
     }
 
     private func openTestURL() {
@@ -91,6 +115,25 @@ struct IntegrationsSettings: View {
             return
         }
         urlMessage = NSWorkspace.shared.open(url) ? "Opened." : "Could not open the URL."
+    }
+}
+
+/// A copy button that confirms with a checkmark for a moment instead of a separate message.
+private struct CopyButton: View {
+    let text: String
+    var title = "Copy"
+    @State private var done = false
+
+    var body: some View {
+        Button {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+            done = true
+            Task { try? await Task.sleep(for: .seconds(1.5)); done = false }
+        } label: {
+            Label(done ? "Copied" : title, systemImage: done ? "checkmark" : "doc.on.doc")
+        }
+        .help("Copy “\(text)”")
     }
 }
 

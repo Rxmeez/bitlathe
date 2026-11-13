@@ -10,7 +10,15 @@ final class QuickPanelModel {
     struct Computed: Equatable {
         var result: DetectionResult
         var output: String
+        /// Labelled facts for tools whose result is a table rather than text (number bases, timestamps, CIDR…).
+        var rows: [MetaRow] = []
         var error: String?
+
+        /// What Copy puts on the clipboard: the text output, or the facts as "Label: value" lines.
+        var copyText: String {
+            if !output.isEmpty { return output }
+            return rows.map { "\($0.label): \($0.value)" }.joined(separator: "\n")
+        }
     }
 
     var clipboardText: String = ""
@@ -18,6 +26,8 @@ final class QuickPanelModel {
     var selected = 0
     var computed: Computed?
     var isRunning = false
+    /// The fact row most recently copied by clicking it, for a brief checkmark.
+    var copiedRowID: String?
     private var runTask: Task<Void, Never>?
 
     var current: DetectionResult? { candidates.indices.contains(selected) ? candidates[selected] : nil }
@@ -31,6 +41,7 @@ final class QuickPanelModel {
         clipboardText = text
         candidates = []
         computed = nil
+        copiedRowID = nil
         selected = 0
         guard !text.isEmpty, text.utf8.count < DetectionEngine.maxInputBytes else { return }
         let report = DetectionEngine.detect(text, tools: ToolRegistry.shared.tools,
@@ -42,6 +53,7 @@ final class QuickPanelModel {
     func select(_ index: Int) {
         guard candidates.indices.contains(index) else { return }
         selected = index
+        copiedRowID = nil
         runCurrent()
     }
 
@@ -54,7 +66,7 @@ final class QuickPanelModel {
             let computed: Computed
             do {
                 let out = try await result.tool.run(text: text, options: result.score.options)
-                computed = Computed(result: result, output: out.payload.text ?? "", error: nil)
+                computed = Computed(result: result, output: out.payload.text ?? "", rows: out.metadata, error: nil)
             } catch {
                 computed = Computed(result: result, output: "", error: (error as? ToolError)?.message ?? error.localizedDescription)
             }
@@ -70,7 +82,7 @@ final class QuickPanelModel {
         guard !text.isEmpty, text.utf8.count < DetectionEngine.maxInputBytes else { return nil }
         let report = DetectionEngine.detect(text, tools: ToolRegistry.shared.tools, ignoring: Set(Settings.shared.detectionIgnoreList))
         guard let best = report.best, let out = try? await best.tool.run(text: text, options: best.score.options) else { return nil }
-        let s = out.payload.text ?? ""
+        let s = Computed(result: best, output: out.payload.text ?? "", rows: out.metadata).copyText
         return s.isEmpty ? nil : s
     }
 }
@@ -124,6 +136,8 @@ struct QuickPanelView: View {
                     .truncationMode(.tail)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
+            } else if let c = model.computed, !c.rows.isEmpty {
+                facts(c.rows)
             } else if model.computed != nil {
                 Text("No text output. Open in Bitlathe to see the result.").font(.callout).foregroundStyle(.secondary)
             } else {
@@ -133,6 +147,35 @@ struct QuickPanelView: View {
         .padding(Space.sm + Space.xs)
         .frame(maxWidth: .infinity, minHeight: 56, alignment: .topLeading)
         .background(Palette.raised, in: RoundedRectangle(cornerRadius: Radius.medium, style: .continuous))
+    }
+
+    /// Facts as label/value rows; clicking a row copies just that value.
+    private func facts(_ rows: [MetaRow]) -> some View {
+        Grid(alignment: .leading, horizontalSpacing: Space.md, verticalSpacing: Space.xs) {
+            ForEach(rows.prefix(8)) { row in
+                GridRow {
+                    Text(row.label).font(.caption).foregroundStyle(.secondary).gridColumnAlignment(.trailing)
+                    Button {
+                        Clipboard.copy(row.value, toast: nil)
+                        model.copiedRowID = row.id
+                    } label: {
+                        HStack(spacing: Space.sm) {
+                            Text(row.value).font(Typography.captionMono).lineLimit(1).truncationMode(.middle)
+                            Spacer(minLength: Space.sm)
+                            Image(systemName: model.copiedRowID == row.id ? "checkmark" : "doc.on.doc")
+                                .font(.caption2)
+                                .foregroundStyle(model.copiedRowID == row.id ? Palette.success : Palette.subtle)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Copy \(row.label)")
+                    .accessibilityLabel("\(row.label), \(row.value). Copy")
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var alsoTry: some View {
@@ -165,7 +208,7 @@ struct QuickPanelView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.regular)
-            .disabled((model.computed?.output ?? "").isEmpty)
+            .disabled((model.computed?.copyText ?? "").isEmpty)
             .help("Copy result (Return)")
         }
     }
@@ -184,7 +227,7 @@ struct QuickPanelView: View {
 
     private var shortcuts: some View {
         ZStack {
-            Button("", action: copy).keyboardShortcut(.defaultAction).disabled((model.computed?.output ?? "").isEmpty)
+            Button("", action: copy).keyboardShortcut(.defaultAction).disabled((model.computed?.copyText ?? "").isEmpty)
             Button("", action: close).keyboardShortcut(.cancelAction)
             ForEach(0..<4, id: \.self) { i in
                 Button("") { if i < model.alternatives.count { model.select(model.alternatives[i].index) } }

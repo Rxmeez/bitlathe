@@ -9,11 +9,18 @@ struct ScriptsSettings: View {
     var body: some View {
         Form {
             Section {
+                // The default folder sits deep inside the sandbox container, so show it by name and keep the
+                // full path one click (or a tooltip) away rather than wrapping it across the row.
                 LabeledContent("Folder") {
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text(manager.folder.path).font(.callout).lineLimit(2).truncationMode(.middle).textSelection(.enabled)
-                        Text(manager.isCustomFolder ? "Custom folder" : "Default folder (inside Bitlathe's container)").font(.caption).foregroundStyle(.secondary)
+                        Label(manager.isCustomFolder ? manager.folder.lastPathComponent : "Bitlathe Scripts",
+                              systemImage: "folder")
+                        Text(manager.isCustomFolder ? (manager.folder.path as NSString).abbreviatingWithTildeInPath
+                                                    : "Default folder, inside Bitlathe's container")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .lineLimit(1).truncationMode(.middle)
                     }
+                    .help(manager.folder.path)
                 }
                 HStack {
                     Button("Choose Folder…") { chooseFolder() }
@@ -24,8 +31,7 @@ struct ScriptsSettings: View {
                 }
                 if let e = manager.folderError { Text(e).font(.caption).foregroundStyle(Palette.danger) }
             } footer: {
-                Text("Bitlathe watches this folder and reloads scripts whenever a .js file changes. Scripts appear in the sidebar, the command palette and the bl command line.")
-                    .font(.caption).foregroundStyle(.secondary)
+                SettingsFooter("Bitlathe watches this folder and reloads scripts whenever a .js file changes. Scripts appear in the sidebar, the command palette and the bl command line.")
             }
             Section("Loaded scripts (\(manager.report.scripts.count))") {
                 let problems = manager.report.issues.filter(\.isFatal)
@@ -55,6 +61,7 @@ struct ScriptsSettings: View {
     private func row(symbol: String, title: String, detail: String?, url: URL, issues: [ScriptLoadIssue]) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: NSImage(systemSymbolName: symbol, accessibilityDescription: nil) != nil ? symbol : "scroll")
+                .resizable().scaledToFit().frame(width: 17, height: 15)   // wide glyphs ("abc", "123") stay in the column
                 .frame(width: 20).foregroundStyle(issues.contains(where: \.isFatal) ? Palette.danger : Color.secondary)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {

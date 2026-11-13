@@ -32,7 +32,22 @@ public enum StorePaths {
         }
         return base.appendingPathComponent("Bitlathe", isDirectory: true)
     }
-    public static var database: URL { appSupport.appendingPathComponent("bitlathe.sqlite") }
+    public static var database: URL {
+        #if DEBUG
+        if isHarnessLaunch { return FileManager.default.temporaryDirectory.appendingPathComponent("bitlathe-harness.sqlite") }
+        #endif
+        return appSupport.appendingPathComponent("bitlathe.sqlite")
+    }
+
+    /// Screenshot-harness launches (scripts/shot.sh passes `-BLHarness YES`) get a throwaway database, so debug runs
+    /// never read, seed or clear the user's real history, favourites, pipelines or clipboard entries.
+    public static var isHarnessLaunch: Bool {
+        #if DEBUG
+        return UserDefaults.standard.bool(forKey: "BLHarness")
+        #else
+        return false
+        #endif
+    }
 }
 
 /// History, favourites, usage, pinned inputs, clipboard history and pipelines in one SQLite file.

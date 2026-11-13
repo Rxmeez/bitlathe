@@ -45,11 +45,12 @@ struct OnboardingView: View {
             .padding(.top, Space.xxl)
 
             HStack {
-                Button("Skip", action: onFinish)
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                    .opacity(page == pageCount - 1 ? 0 : 1)
-                    .accessibilityHidden(page == pageCount - 1)
+                // First page: Skip. Later pages: Back, so people can revisit a step.
+                Button(page == 0 ? "Skip" : "Back") {
+                    if page == 0 { onFinish() } else { withAnimation(Motion.animation(Motion.normal)) { page -= 1 } }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
                 Spacer()
                 HStack(spacing: Space.sm) {
                     ForEach(0..<pageCount, id: \.self) { i in
@@ -201,7 +202,7 @@ private struct PrivacyPage: View {
     var body: some View {
         VStack(spacing: Space.xl) {
             PageHeader(symbol: "lock.shield", title: "Everything stays on this Mac",
-                       subtitle: "Bitlathe never uses the network. Nothing you paste is sent anywhere. Choose how much it remembers; change it any time in Settings.")
+                       subtitle: "What you paste is processed on this Mac and never sent anywhere. Choose how much Bitlathe remembers; change it any time in Settings.")
             VStack(spacing: 0) {
                 choice("Detect the clipboard when Bitlathe comes forward",
                        detail: "Looks at what you copied and suggests a tool. Nothing is stored.",
@@ -223,6 +224,7 @@ private struct PrivacyPage: View {
                 Text(title).font(.body)
                 Text(detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)   // keep both rows on one leading edge
         }
         .toggleStyle(.switch)
         .padding(.vertical, Space.md)

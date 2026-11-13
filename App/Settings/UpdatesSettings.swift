@@ -1,8 +1,10 @@
-// release: the "Updates" settings tab. In the App Store build the tab is not added and this view shows only the version.
+// release: the Updates section of Settings › General (Direct build only).
 import SwiftUI
 import BitlatheCore
 
-struct UpdatesSettings: View {
+/// Update checks, shown as a section at the end of Settings › General. Empty in the App Store build,
+/// where the Mac App Store handles updates.
+struct UpdatesSection: View {
     @State private var settings = Settings.shared
     #if DIRECT_DISTRIBUTION
     @StateObject private var updater = Updater.shared
@@ -16,28 +18,27 @@ struct UpdatesSettings: View {
     }
 
     var body: some View {
+        #if DIRECT_DISTRIBUTION
         @Bindable var s = settings
-        Form {
-            LabeledContent("Current version", value: versionString)
-            #if DIRECT_DISTRIBUTION
-            Section {
-                Button("Check for updates now") { updater.checkForUpdates() }
-                    .disabled(!updater.canCheckForUpdates)
-                Toggle("Check for updates automatically", isOn: $s.automaticUpdates)
-                    .disabled(!updater.isConfigured)
-                    .onChange(of: settings.automaticUpdates) { _, on in updater.setAutomaticChecks(on) }
-            } footer: {
-                if updater.isConfigured {
-                    Text("Updates are signed and verified before they are installed.").font(.caption).foregroundStyle(.secondary)
-                } else {
-                    Text("This build has no update signing key (SUPublicEDKey), so update checks are off. Release builds set it; see Docs/Release.md.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
+        Section {
+            LabeledContent("Version", value: versionString)
+            // Shown off (and disabled) when this build cannot check, rather than "on but not working".
+            Toggle("Check for updates automatically", isOn: updater.isConfigured ? $s.automaticUpdates : .constant(false))
+                .disabled(!updater.isConfigured)
+                .onChange(of: settings.automaticUpdates) { _, on in updater.setAutomaticChecks(on) }
+            Button("Check for Updates Now") { updater.checkForUpdates() }
+                .disabled(!updater.canCheckForUpdates)
+        } header: {
+            Text("Updates")
+        } footer: {
+            if updater.isConfigured {
+                SettingsFooter("Updates are signed and verified before they are installed.")
+            } else {
+                SettingsFooter("This build has no update signing key, so update checks are off. Release builds include one.")
             }
-            #else
-            Text("Updates are delivered by the Mac App Store.").font(.caption).foregroundStyle(.secondary)
-            #endif
         }
-        .formStyle(.grouped)
+        #else
+        EmptyView()
+        #endif
     }
 }

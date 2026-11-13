@@ -128,10 +128,12 @@ public final class Settings {
     private func load() {
         loading = true
         defer { loading = false }
-        func b(_ k: String, _ d: Bool) -> Bool { defaults.object(forKey: "bl." + k) as? Bool ?? d }
+        // bool/integer/double(forKey:) also parse strings ("YES", "1", "0.5"), so a launch argument such as
+        // `-bl.wrapLines NO` overrides a setting for one run without being saved.
+        func b(_ k: String, _ d: Bool) -> Bool { defaults.object(forKey: "bl." + k) == nil ? d : defaults.bool(forKey: "bl." + k) }
         func s(_ k: String, _ d: String) -> String { defaults.string(forKey: "bl." + k) ?? d }
-        func i(_ k: String, _ d: Int) -> Int { defaults.object(forKey: "bl." + k) as? Int ?? d }
-        func dbl(_ k: String, _ d: Double) -> Double { defaults.object(forKey: "bl." + k) as? Double ?? d }
+        func i(_ k: String, _ d: Int) -> Int { defaults.object(forKey: "bl." + k) == nil ? d : defaults.integer(forKey: "bl." + k) }
+        func dbl(_ k: String, _ d: Double) -> Double { defaults.object(forKey: "bl." + k) == nil ? d : defaults.double(forKey: "bl." + k) }
         func arr(_ k: String, _ d: [String]) -> [String] { defaults.stringArray(forKey: "bl." + k) ?? d }
 
         launchAtLogin = b("launchAtLogin", launchAtLogin)

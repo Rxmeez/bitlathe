@@ -41,6 +41,16 @@ struct ScratchpadView: View {
         .animation(Motion.animation(Motion.fast), value: model.showPicker)
         .animation(Motion.animation(Motion.fast), value: model.errorMessage)
         .frame(minWidth: ScratchpadMetrics.minSize.width, minHeight: ScratchpadMetrics.minSize.height)
+        // Mouse users need a way in too: the picker and "repeat" were keyboard/menu only.
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button { model.repeatLast() } label: { Label("Repeat", systemImage: "arrow.clockwise") }
+                    .disabled(model.lastTool == nil || model.isRunning)
+                    .help(model.lastTool.map { "Apply \($0.name) again (⌘⇧R)" } ?? "Repeat the last tool (⌘⇧R)")
+                Button { model.openPicker() } label: { Label("Apply Tool", systemImage: "wand.and.stars") }
+                    .help("Apply a tool to the selection, or to everything (⌘⇧P)")
+            }
+        }
         .focusedSceneValue(\.scratchpad, model)
     }
 
@@ -80,9 +90,11 @@ private struct ScratchpadStatusBar: View {
             Spacer()
             if model.isRunning { ProgressView().controlSize(.small) }
             if let tool = model.lastTool {
-                Label("Last: \(tool.name)", systemImage: tool.symbol)
-                    .labelStyle(.titleAndIcon)
-                    .help("Repeat with ⌘⇧R")
+                Button { model.repeatLast() } label: {
+                    Label("Last: \(tool.name)", systemImage: tool.symbol).labelStyle(.titleAndIcon)
+                }
+                .buttonStyle(.plain)
+                .help("Apply \(tool.name) again (⌘⇧R)")
             } else {
                 Text("No tool applied yet").foregroundStyle(.tertiary)
             }
@@ -94,6 +106,6 @@ private struct ScratchpadStatusBar: View {
         .frame(height: Layout.statusHeight)
         .background(Palette.chrome)
         .overlay(alignment: .top) { Divider() }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 }

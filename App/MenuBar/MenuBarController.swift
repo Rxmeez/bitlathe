@@ -225,7 +225,7 @@ final class MenuBarController: NSObject {
     }
 
     private func copyFromPanel() {
-        guard let out = panelModel.computed?.output, !out.isEmpty else { return }
+        guard let out = panelModel.computed?.copyText, !out.isEmpty else { return }
         Clipboard.copy(out, toast: nil)
         closePanel()
         flash("checkmark")

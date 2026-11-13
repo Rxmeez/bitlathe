@@ -45,18 +45,22 @@ private struct ExcludedAppsEditor: View {
 
     var body: some View {
         ForEach(settings.clipboardExcludedApps, id: \.self) { id in
+            let info = SourceApp.info(id)
             HStack(spacing: Space.sm) {
-                if let info = SourceApp.info(id) {
-                    Image(nsImage: info.icon).resizable().frame(width: 20, height: 20)
-                    Text(info.name)
-                } else {
-                    Image(systemName: "app.dashed").frame(width: 20, height: 20).foregroundStyle(.secondary)
-                    Text("Not installed").foregroundStyle(.secondary)
+                Image(nsImage: info?.icon ?? NSWorkspace.shared.icon(for: .applicationBundle))
+                    .resizable().frame(width: 20, height: 20)
+                    .opacity(info == nil ? 0.45 : 1)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(info?.name ?? Self.knownNames[id] ?? id)
+                    Text(info == nil ? "\(id) · Not installed" : id)
+                        .font(Typography.captionMono).foregroundStyle(Palette.subtle)
+                        .lineLimit(1).truncationMode(.middle)
                 }
                 Spacer()
-                Text(id).font(Typography.captionMono).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                 Button { settings.clipboardExcludedApps.removeAll { $0 == id } } label: { Image(systemName: "minus.circle") }
-                    .buttonStyle(.borderless).help("Remove \(id)").accessibilityLabel("Remove \(id)")
+                    .buttonStyle(.borderless).help("Stop excluding \(info?.name ?? Self.knownNames[id] ?? id)")
+                    .accessibilityLabel("Remove \(info?.name ?? Self.knownNames[id] ?? id)")
             }
         }
         Menu("Add Running App") {
@@ -70,6 +74,18 @@ private struct ExcludedAppsEditor: View {
         }
         .menuStyle(.borderlessButton).fixedSize()
     }
+
+    /// Names for the password managers excluded by default, so the list reads well even when they are not installed.
+    static let knownNames: [String: String] = [
+        "com.agilebits.onepassword7": "1Password 7",
+        "com.1password.1password": "1Password",
+        "com.bitwarden.desktop": "Bitwarden",
+        "com.lastpass.LastPass": "LastPass",
+        "com.dashlane.dashlanephonefinal": "Dashlane",
+        "com.apple.keychainaccess": "Keychain Access",
+        "com.apple.Passwords": "Passwords",
+        "org.keepassxc.keepassxc": "KeePassXC",
+    ]
 
     private var candidates: [NSRunningApplication] {
         let have = Set(settings.clipboardExcludedApps)

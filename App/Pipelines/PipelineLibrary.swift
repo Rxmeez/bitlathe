@@ -38,7 +38,10 @@ final class PipelineLibrary {
         if let name = defaults.string(forKey: "BLPipeline"), let p = pipelines.first(where: { $0.name == name || $0.slug == name }) {
             model.selectedToolID = p.toolID
             let editor = self.editor(for: p)
-            if let text = defaults.string(forKey: "BLPipelineInput") { editor.input = text.replacingOccurrences(of: "\\n", with: "\n") }
+            if let text = defaults.string(forKey: "BLPipelineInput") {
+                editor.persistsInput = false
+                editor.input = text.replacingOccurrences(of: "\\n", with: "\n")
+            }
             if defaults.bool(forKey: "BLPipelineExpand") { for s in p.steps { editor.expanded[s.id] = true } }
             if defaults.bool(forKey: "BLPipelinePicker") { editor.debugShowPicker = true }
         }
@@ -211,10 +214,12 @@ final class PipelineEditor {
     var input: String {
         didSet {
             guard input != oldValue else { return }
-            Self.storeInput(input, for: pipelineID)
+            if persistsInput { Self.storeInput(input, for: pipelineID) }
             scheduleRun()
         }
     }
+    /// Off for screenshot-harness input, so a debug launch never overwrites the user's saved pipeline input.
+    var persistsInput = true
     private(set) var run: PipelineRun?
     private(set) var running = false
     /// Explicit expand/collapse of a step's output; absent means "expanded only when it failed".

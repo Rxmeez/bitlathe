@@ -54,11 +54,13 @@ final class AppModel {
             if let sec = defaults.string(forKey: "BLSecondary") { session(for: tool).secondaryText = sec.replacingOccurrences(of: "\\n", with: "\n") }
             if defaults.bool(forKey: "BLInspector") { showInspector = true }
             switch defaults.string(forKey: "BLInspectorTab") { case "history": debugInspectorTab = 1; case "about": debugInspectorTab = 2; default: break }
-            if defaults.bool(forKey: "BLSeedHistory") { Self.seedHistory(for: tool) }
+            if defaults.bool(forKey: "BLSeedHistory"), StorePaths.isHarnessLaunch { Self.seedHistory(for: tool) }  // throwaway DB only
             if let path = defaults.string(forKey: "BLInputFile") { session(for: tool).load(urls: [URL(fileURLWithPath: path)]) }
         }
-        if defaults.bool(forKey: "BLClipboard") { // clipboard: screenshot harness
-            settings.clipboardHistoryEnabled = true
+        // clipboard: screenshot harness. Never flips the (privacy-sensitive) setting itself: pass
+        // `-bl.clipboardHistoryEnabled YES` too, which lives in the launch-argument domain and is not saved.
+        // Seeding only happens against the harness's throwaway database.
+        if defaults.bool(forKey: "BLClipboard"), StorePaths.isHarnessLaunch {
             Task { await Self.seedClipboard(); selectedToolID = ClipboardMonitor.sidebarID }
         }
         if let q = defaults.string(forKey: "BLSearch") { searchText = q }

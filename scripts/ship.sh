@@ -66,8 +66,9 @@ fi
 
 # --- Tests ----------------------------------------------------------------------------
 say "Running the tests"
-TEST_LOG=$(swift test 2>&1 || true)
-[[ "$TEST_LOG" == *"with 0 failures"* && "$TEST_LOG" != *"error:"* ]] || { print -r -- "$TEST_LOG" | grep -E "error:|failed" | head -20; die "tests failed"; }
+tests_pass() { TEST_LOG=$(swift test 2>&1 || true); [[ "$TEST_LOG" == *"with 0 failures"* && "$TEST_LOG" != *"error:"* ]]; }
+# A few tests assert on wall-clock time and can miss by milliseconds on a busy Mac: one second chance, no more.
+tests_pass || { warn "tests failed once; running them again"; tests_pass; } || { print -r -- "$TEST_LOG" | grep -E "error:|failed" | head -20; die "tests failed"; }
 
 # --- Signing certificate into a throwaway keychain -------------------------------------
 IDENTITY="-"

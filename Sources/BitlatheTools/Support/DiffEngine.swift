@@ -21,29 +21,36 @@ public enum DiffEngine {
         for i in 0..<start { edits.append(Edit(op: .equal, token: a[i], oldIndex: i, newIndex: i)) }
         let midA = Array(a[start..<endA]), midB = Array(b[start..<endB])
         if !midA.isEmpty || !midB.isEmpty {
-            if midA.count * midB.count > 4_000_000 {
-                // Too big for O(ND) in reasonable memory; fall back to a simple LCS-free diff.
+            if let mid = myers(midA, midB, offsetA: start, offsetB: start, maxEdits: maxEditDistance) {
+                edits += mid
+            } else {
+                // Edit distance beyond the cap: report the middle section as replaced rather than spend O(D²) memory.
                 for (i, t) in midA.enumerated() { edits.append(Edit(op: .delete, token: t, oldIndex: start + i, newIndex: nil)) }
                 for (i, t) in midB.enumerated() { edits.append(Edit(op: .insert, token: t, oldIndex: nil, newIndex: start + i)) }
-            } else {
-                edits += myers(midA, midB, offsetA: start, offsetB: start)
             }
         }
         for i in endA..<a.count { edits.append(Edit(op: .equal, token: a[i], oldIndex: i, newIndex: i - endA + endB)) }
         return edits
     }
 
-    private static func myers<T: Equatable & Sendable>(_ a: [T], _ b: [T], offsetA: Int, offsetB: Int) -> [Edit<T>] {
+    /// Largest number of insertions + deletions Myers will search for. Memory is O(D²), time O((N+M)·D).
+    static let maxEditDistance = 2_000
+
+    /// Returns nil when the shortest edit script is longer than `maxEdits`.
+    private static func myers<T: Equatable & Sendable>(_ a: [T], _ b: [T], offsetA: Int, offsetB: Int, maxEdits: Int) -> [Edit<T>]? {
         let n = a.count, m = b.count
         let max = n + m
-        var v = [Int](repeating: 0, count: 2 * max + 2)
-        var trace: [[Int]] = []
+        let off = max + 1                       // diagonal k lives at index k + off
+        var v = [Int](repeating: 0, count: 2 * max + 3)
+        // For each d only the window k ∈ [-d-1, d+1] can be read while backtracking, so store just that slice.
+        var trace: [(lo: Int, values: [Int])] = []
         var found = false
-        outer: for d in 0...max {
-            trace.append(v)
+        outer: for d in 0...min(max, maxEdits) {
+            let lo = off - d - 1
+            trace.append((lo, Array(v[lo...(off + d + 1)])))
             var k = -d
             while k <= d {
-                let idx = k + max
+                let idx = k + off
                 var x: Int
                 if k == -d || (k != d && v[idx - 1] < v[idx + 1]) { x = v[idx + 1] } else { x = v[idx - 1] + 1 }
                 var y = x - k
@@ -53,17 +60,17 @@ public enum DiffEngine {
                 k += 2
             }
         }
-        _ = found
+        guard found else { return nil }
         // Backtrack
         var edits: [Edit<T>] = []
         var x = n, y = m
         for d in stride(from: trace.count - 1, through: 0, by: -1) {
-            let v = trace[d]
+            let (lo, vals) = trace[d]
+            func at(_ k: Int) -> Int { vals[k + off - lo] }
             let k = x - y
-            let idx = k + max
             let prevK: Int
-            if k == -d || (k != d && v[idx - 1] < v[idx + 1]) { prevK = k + 1 } else { prevK = k - 1 }
-            let prevX = v[prevK + max]
+            if k == -d || (k != d && at(k - 1) < at(k + 1)) { prevK = k + 1 } else { prevK = k - 1 }
+            let prevX = at(prevK)
             let prevY = prevX - prevK
             while x > prevX, y > prevY {
                 x -= 1; y -= 1
@@ -189,9 +196,13 @@ public enum DiffEngine {
             } else {
                 let edits = diff(aa.map { JSONSerializer.string($0, options: .minified) }, ab.map { JSONSerializer.string($0, options: .minified) })
                 var pendingDeletes: [(Int, JSONValue)] = []
+                func flushDeletes() {
+                    for d in pendingDeletes { out.append(JSONChange(path: "\(path)[\(d.0)]", kind: .removed, before: JSONSerializer.string(d.1, options: .minified), after: nil)) }
+                    pendingDeletes.removeAll()
+                }
                 for e in edits {
                     switch e.op {
-                    case .equal: pendingDeletes.removeAll()
+                    case .equal: flushDeletes()   // deletions not paired with an insert are real removals
                     case .delete: pendingDeletes.append((e.oldIndex!, aa[e.oldIndex!]))   // swiftlint:disable:this force_unwrapping
                     case .insert:
                         let vb = ab[e.newIndex!]   // swiftlint:disable:this force_unwrapping
@@ -203,9 +214,7 @@ public enum DiffEngine {
                         }
                     }
                 }
-                // flush
-                let flushed = edits.filter { $0.op == .delete }.map { $0.oldIndex! }   // swiftlint:disable:this force_unwrapping
-                for d in pendingDeletes where flushed.contains(d.0) { out.append(JSONChange(path: "\(path)[\(d.0)]", kind: .removed, before: JSONSerializer.string(d.1, options: .minified), after: nil)) }
+                flushDeletes()
             }
         default:
             if a != b {

@@ -156,23 +156,20 @@ public struct InputPane: View {
                 FileCard(url: url, session: session)
             } else if session.inputText.isEmpty, [.image, .file, .binary].contains(session.tool.io.input) {
                 DropZone(session: session)
-            } else if !session.hasInput, session.inputText.isEmpty, session.tool.io.input != .text || !session.tool.samples.isEmpty || true {
+            } else {
+                // One editor instance for both the empty and filled states: swapping views on the first keystroke
+                // would drop keyboard focus. The empty state is an overlay that lets clicks through to the editor.
+                if let notice = session.inputNotice, !session.inputText.isEmpty { InputNotice(text: notice).padding(Space.sm) }
                 ZStack(alignment: .top) {
-                    CodeEditor(text: $session.inputText, language: session.inputLanguage, isEditable: true,
-                               placeholder: "", error: session.error, config: config, selection: $session.selection,
-                               onDrop: { session.load(urls: $0) })
-                    if session.inputText.isEmpty {
+                    CodeEditor(text: $session.inputText, language: session.inputLanguage, isEditable: true, placeholder: "",
+                               error: session.error, annotations: session.output?.annotations.filter { $0.target == .input } ?? [],
+                               config: config, selection: $session.selection, onDrop: { session.load(urls: $0) })
+                    if session.inputText.isEmpty, !session.hasInput {
                         EmptyState(symbol: session.tool.symbol, title: emptyTitle, samples: session.tool.samples,
                                    onPaste: { session.pasteFromClipboard() }, onSample: { session.useSample($0) })
-                            .allowsHitTesting(true)
                     }
-                    if let notice = session.inputNotice { InputNotice(text: notice).padding(Space.sm) }
+                    if let notice = session.inputNotice, session.inputText.isEmpty { InputNotice(text: notice).padding(Space.sm) }
                 }
-            } else {
-                if let notice = session.inputNotice { InputNotice(text: notice).padding(Space.sm) }
-                CodeEditor(text: $session.inputText, language: session.inputLanguage, isEditable: true, placeholder: "",
-                           error: session.error, annotations: session.output?.annotations.filter { $0.target == .input } ?? [],
-                           config: config, selection: $session.selection, onDrop: { session.load(urls: $0) })
             }
             if session.tool.io.dualInput {
                 Divider()

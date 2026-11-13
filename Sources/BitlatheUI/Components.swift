@@ -276,7 +276,9 @@ public struct EmptyState: View {
         }
         .padding(Space.xxl)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Palette.editorBackground)
+        // The background must not take clicks: as an overlay on an empty editor, a click anywhere outside the
+        // buttons and chips has to reach the text view so the user can start typing.
+        .background(Palette.editorBackground.allowsHitTesting(false))
     }
 }
 

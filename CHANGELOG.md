@@ -5,6 +5,10 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-13
+
+Two new visualisers: paste a GitHub Actions workflow or Kubernetes manifests and see them as a diagram.
+
 ### Added
 - **GitHub Actions Visualizer.** Paste a workflow to see its triggers and jobs as a graph in the order `needs:` runs them, with each job's runner, steps and matrix. Matrices are counted the way GitHub expands them (`include`, `exclude`), and `runs-on: ${{ matrix.os }}` shows the actual runners. Cycles and unknown `needs:` are flagged.
 - **Kubernetes Visualizer.** Paste manifests (several documents, or a `kubectl get -o yaml` list) to see Ingress and Gateway routes → Services → the workloads their selectors pick → ConfigMaps, Secrets, volumes, service accounts and RBAC. Anything referred to but not defined is drawn dashed, and a Service whose selector matches nothing is flagged. Secret values are never shown, only key names.
@@ -49,5 +53,6 @@ what you pasted and what you probably want done with it.
 - Bitlathe is not notarised by Apple. The first time you open it, allow it in System Settings › Privacy & Security › Open Anyway. Updates install themselves after that.
 - Everything runs locally. Bitlathe sends nothing anywhere.
 
-[Unreleased]: https://github.com/Rxmeez/bitlathe/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Rxmeez/bitlathe/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Rxmeez/bitlathe/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Rxmeez/bitlathe/releases/tag/v0.1.0

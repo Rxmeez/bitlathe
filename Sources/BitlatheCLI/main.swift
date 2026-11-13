@@ -165,13 +165,17 @@ func main() async -> Int32 {
     var args = Array(CommandLine.arguments.dropFirst())
     ToolCatalog.registerAll()
     let registry = ToolRegistry.shared
-    // Saved pipelines
-    if let pipelines = try? await DataStore.shared.pipelines() {
-        for p in pipelines { registry.register(PipelineEngine.asTool(p, tools: { id in MainActor.assumeIsolated { registry.tool(id) } })) }
-    }
     // User scripts
     let scriptsFolder = Settings.shared.scriptsFolderPath.isEmpty ? ScriptLoader.defaultFolder : URL(fileURLWithPath: Settings.shared.scriptsFolderPath)
     for s in ScriptLoader.load(folder: scriptsFolder) { registry.register(s.asTool) }
+    // Pipeline steps run off the main actor, so they resolve tools from an immutable snapshot
+    // (MainActor.assumeIsolated traps there). Pipelines cannot nest, so natives + scripts suffice.
+    let toolsByID = Dictionary(registry.tools.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+    let lookup: @Sendable (String) -> AnyTool? = { toolsByID[$0] }
+    // Saved pipelines
+    if let pipelines = try? await DataStore.shared.pipelines() {
+        for p in pipelines { registry.register(PipelineEngine.asTool(p, tools: lookup)) }
+    }
 
     guard let command = args.first else { printUsage(); return 2 }
     args.removeFirst()
@@ -228,7 +232,7 @@ func main() async -> Int32 {
             let (_, positional, flags, out) = try parseArgs(rest, fields: [])
             let firstTool = registry.tool(pipeline.steps.first?.toolID ?? "") ?? registry.tools[0]
             let input = try loadInput(positional, tool: firstTool)
-            let run = await PipelineEngine.run(pipeline, input: input, tools: { id in MainActor.assumeIsolated { registry.tool(id) } })
+            let run = await PipelineEngine.run(pipeline, input: input, tools: lookup)
             if let e = run.error {
                 let failed = run.steps.first { $0.error != nil }
                 throw CLIError.tool("\(failed?.step.toolID ?? "pipeline"): \(e.description)")

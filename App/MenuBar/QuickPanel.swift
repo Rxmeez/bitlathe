@@ -3,12 +3,14 @@ import AppKit
 import BitlatheCore
 import BitlatheUI
 
-/// State behind the Quick Panel: detection over the clipboard plus the computed result of the chosen tool.
+/// State behind the Quick Panel: the Smart Box's reading of the clipboard (same detection, typed instructions, chains
+/// and learned order as the home screen) plus the computed result of the chosen action.
 @MainActor
 @Observable
 final class QuickPanelModel {
     struct Computed: Equatable {
-        var result: DetectionResult
+        /// The action that produced the result; a chained action when a second step ran (Base64 → JSON).
+        var action: SmartBox.Action
         var output: String
         /// Labelled facts for tools whose result is a table rather than text (number bases, timestamps, CIDR…).
         var rows: [MetaRow] = []
@@ -22,32 +24,56 @@ final class QuickPanelModel {
     }
 
     var clipboardText: String = ""
-    var candidates: [DetectionResult] = []
+    private(set) var analysis: SmartBox.Analysis?
+    var candidates: [SmartBox.Action] = []
     var selected = 0
     var computed: Computed?
     var isRunning = false
     /// The fact row most recently copied by clicking it, for a brief checkmark.
     var copiedRowID: String?
     private var runTask: Task<Void, Never>?
+    private var learned: SmartBox.Learned = [:]
 
-    var current: DetectionResult? { candidates.indices.contains(selected) ? candidates[selected] : nil }
-    var alternatives: [(index: Int, result: DetectionResult)] {
+    var current: SmartBox.Action? { candidates.indices.contains(selected) ? candidates[selected] : nil }
+    var alternatives: [(index: Int, action: SmartBox.Action)] {
         candidates.enumerated().filter { $0.offset != selected }.prefix(4).map { ($0.offset, $0.element) }
     }
+    var isSensitive: Bool { analysis?.isSensitive ?? false }
 
-    /// Reads the clipboard, detects, and runs the top result.
+    /// Reads the clipboard, works out what it is, and runs the top action.
     func refresh() {
         let text = Clipboard.string ?? ""
         clipboardText = text
+        analysis = nil
         candidates = []
         computed = nil
         copiedRowID = nil
         selected = 0
         guard !text.isEmpty, text.utf8.count < DetectionEngine.maxInputBytes else { return }
-        let report = DetectionEngine.detect(text, tools: ToolRegistry.shared.tools,
-                                            ignoring: Set(Settings.shared.detectionIgnoreList))
-        candidates = Array(report.results.prefix(5))
+        analyse(text)
+        // The remembered choices are read from disk; if they differ from the last copy, order again with them.
+        Task { [weak self] in
+            let loaded = (try? await DataStore.shared.choices()) ?? [:]
+            guard let self, loaded != self.learned else { return }
+            self.learned = loaded
+            if self.clipboardText == text, self.selected == 0 { self.analyse(text) }
+        }
+    }
+
+    private func analyse(_ text: String) {
+        analysis = Self.read(text, learned: learned)
+        candidates = analysis?.actions ?? []
+        selected = 0
         runCurrent()
+    }
+
+    /// Prose is not worth a panel: only recognised data, commands and instructions count.
+    private static func read(_ text: String, learned: SmartBox.Learned) -> SmartBox.Analysis? {
+        guard var a = SmartBox.analyse(text, tools: ToolRegistry.shared.tools, ignoring: Set(Settings.shared.detectionIgnoreList),
+                                       learned: learned, limit: 5) else { return nil }
+        a.actions.removeAll { $0.opensTool }
+        guard !a.actions.isEmpty, a.kind != .words || a.formatKey == "lines" else { return nil }
+        return a
     }
 
     func select(_ index: Int) {
@@ -59,30 +85,54 @@ final class QuickPanelModel {
 
     private func runCurrent() {
         runTask?.cancel()
-        guard let result = current else { computed = nil; return }
+        guard let action = current else { computed = nil; return }
         isRunning = true
         let text = clipboardText
+        // Only the first suggestion chains by itself; picking an alternative means wanting exactly that.
+        let counts = selected == 0 ? learned[analysis?.formatKey ?? ""] ?? [:] : nil
         runTask = Task { [weak self] in
-            let computed: Computed
-            do {
-                let out = try await result.tool.run(text: text, options: result.score.options)
-                computed = Computed(result: result, output: out.payload.text ?? "", rows: out.metadata, error: nil)
-            } catch {
-                computed = Computed(result: result, output: "", error: (error as? ToolError)?.message ?? error.localizedDescription)
-            }
+            let computed = await Self.run(action, on: text, chainCounts: counts)
             guard !Task.isCancelled else { return }
             self?.computed = computed
             self?.isRunning = false
         }
     }
 
-    /// Computes the top result synchronously enough for the Option-click path.
+    /// Runs an action, then a second step when its output is itself data (Base64 that hides JSON), unless the
+    /// person has more often taken the first step alone. `chainCounts` nil means never chain.
+    private static func run(_ action: SmartBox.Action, on text: String, chainCounts: [String: Int]?) async -> Computed {
+        do {
+            var out = try await action.tool.run(text: action.inputOverride ?? text, options: action.options)
+            var used = action
+            if let counts = chainCounts, let chain = SmartBox.chain(after: action, output: out.text, tools: ToolRegistry.shared.tools),
+               let step = chain.then, (counts[chain.key] ?? 0) >= (counts[action.key] ?? 0),
+               let second = try? await step.tool.run(text: out.text, options: step.options) {
+                out = second
+                used = chain
+            }
+            return Computed(action: used, output: out.payload.text ?? "", rows: out.metadata, error: nil)
+        } catch {
+            return Computed(action: action, output: "", error: (error as? ToolError)?.message ?? error.localizedDescription)
+        }
+    }
+
+    /// Copying a result is accepting it: counted for this kind of data, as on the home screen.
+    func learn() {
+        guard let a = analysis, let key = computed?.action.key, computed?.error == nil else { return }
+        learned[a.formatKey, default: [:]][key, default: 0] += 1
+        let format = a.formatKey
+        Task { try? await DataStore.shared.recordChoice(format: format, action: key) }
+    }
+
+    /// The top result, for the Option-click path (no panel).
     func topOutput() async -> String? {
         let text = Clipboard.string ?? ""
         guard !text.isEmpty, text.utf8.count < DetectionEngine.maxInputBytes else { return nil }
-        let report = DetectionEngine.detect(text, tools: ToolRegistry.shared.tools, ignoring: Set(Settings.shared.detectionIgnoreList))
-        guard let best = report.best, let out = try? await best.tool.run(text: text, options: best.score.options) else { return nil }
-        let s = Computed(result: best, output: out.payload.text ?? "", rows: out.metadata).copyText
+        learned = (try? await DataStore.shared.choices()) ?? learned
+        guard let a = Self.read(text, learned: learned), let best = a.actions.first else { return nil }
+        let result = await Self.run(best, on: text, chainCounts: learned[a.formatKey] ?? [:])
+        guard result.error == nil else { return nil }
+        let s = result.copyText
         return s.isEmpty ? nil : s
     }
 }
@@ -113,14 +163,23 @@ struct QuickPanelView: View {
         .background(shortcuts)
     }
 
-    private func header(_ r: DetectionResult) -> some View {
-        HStack(spacing: Space.sm) {
+    private func header(_ picked: SmartBox.Action) -> some View {
+        // Once it has run, show what ran: the first suggestion may have chained a second step.
+        let r = model.computed?.action.tool.id == picked.tool.id ? model.computed?.action ?? picked : picked
+        return HStack(spacing: Space.sm) {
             Image(systemName: r.tool.symbol).font(.title3).foregroundStyle(Palette.accent).frame(width: 24)
             VStack(alignment: .leading, spacing: 0) {
-                Text(r.tool.name).font(.headline)
-                Text(r.score.reason).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                Text([r.title, r.detail].compactMap { $0 }.joined(separator: " · ")).font(.headline).lineLimit(1)
+                Text(r.learned > 0 ? "Your usual for this kind of data" : r.reason).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
+            if model.isSensitive {
+                Label("Secret", systemImage: "lock.fill")
+                    .font(.caption.weight(.semibold)).foregroundStyle(Palette.warning)
+                    .padding(.horizontal, Space.sm).padding(.vertical, 1)
+                    .background(Palette.warning.opacity(0.12), in: Capsule())
+                    .help("Looks like a credential or key. It stays on this Mac.")
+            }
             if model.isRunning { ProgressView().controlSize(.small) }
         }
     }
@@ -178,22 +237,30 @@ struct QuickPanelView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// As many alternatives as fit with their names in full; a cut-off "St…" tells nobody anything.
     private var alsoTry: some View {
+        ViewThatFits(in: .horizontal) {
+            ForEach([4, 3, 2, 1], id: \.self) { count in alsoTryRow(count) }
+        }
+    }
+
+    private func alsoTryRow(_ count: Int) -> some View {
         HStack(spacing: Space.sm) {
-            Text("Also try").font(.caption).foregroundStyle(.secondary)
-            ForEach(Array(model.alternatives.enumerated()), id: \.element.result.id) { slot, alt in
+            Text("Also try").font(.caption).foregroundStyle(.secondary).fixedSize()
+            ForEach(Array(model.alternatives.prefix(count).enumerated()), id: \.element.action.key) { slot, alt in
                 Button { model.select(alt.index) } label: {
                     HStack(spacing: Space.xs) {
-                        Image(systemName: alt.result.tool.symbol).font(.caption2)
-                        Text(alt.result.tool.name).lineLimit(1)
+                        Image(systemName: alt.action.tool.symbol).font(.caption2)
+                        Text(alt.action.title).lineLimit(1)
                         Text("⌘\(slot + 1)").foregroundStyle(.tertiary)
                     }
                     .font(.caption)
+                    .fixedSize()
                     .padding(.horizontal, Space.sm).padding(.vertical, Space.xs)
                     .background(Palette.raised, in: Capsule())
                 }
                 .buttonStyle(.plain)
-                .help("Show \(alt.result.tool.name) (⌘\(slot + 1))")
+                .help("\(alt.action.reason) (⌘\(slot + 1))")
             }
             Spacer(minLength: 0)
         }
@@ -217,7 +284,7 @@ struct QuickPanelView: View {
         VStack(spacing: Space.sm) {
             Image(systemName: "doc.on.clipboard").font(.largeTitle).foregroundStyle(.secondary)
             Text(model.clipboardText.isEmpty ? "The clipboard is empty" : "Nothing recognised on the clipboard").font(.headline)
-            Text("Copy some JSON, a JWT, a timestamp, a colour, or any developer text, then open this panel again.")
+            Text("Copy some JSON, a JWT, a timestamp, a colour, or an instruction such as “sha256 hello”, then open this panel again.")
                 .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
             Button("Open Bitlathe", action: openInApp).padding(.top, Space.xs)
         }

@@ -74,7 +74,7 @@ A sortable, filterable table with per-column statistics and CSV or JSON export.
 - **History, favourites and pinned inputs** per tool, stored locally. An opt-in developer clipboard history is off by default.
 - **Inspector** with options, history and tool details.
 - **Appearance.** Light, dark or automatic, six editor themes, configurable font and zoom.
-- **Menu bar Quick Panel.** Press <kbd>⌃⌥Space</kbd> anywhere to see the clipboard already transformed, then press Return to copy. Option-click the menu bar icon to copy straight away.
+- **Menu bar Quick Panel.** Press <kbd>⌃⌥Space</kbd> anywhere to see the clipboard already transformed, then press Return to copy. Option-click the menu bar icon to copy straight away. It reads the clipboard the way the Smart Box does: the same order you have taught it, chained steps, typed instructions such as `sha256 hello`, and a marker when the clipboard holds a secret.
 - **Pipelines.** Chain tools visually, with each step's output shown live. Pipelines can be saved, exported and run from the CLI.
 - **Scratchpad.** <kbd>⌥⌘P</kbd> opens a plain editor where any text tool applies in place, to each selection.
 - **User scripts.** Drop a JavaScript file in the scripts folder and it becomes a tool; ten examples ship with the app. See [Docs/Scripting.md](Docs/Scripting.md).

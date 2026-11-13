@@ -230,6 +230,7 @@ final class MenuBarController: NSObject {
     private func copyFromPanel() {
         guard let out = panelModel.computed?.copyText, !out.isEmpty else { return }
         Clipboard.copy(out, toast: nil)
+        panelModel.learn()
         closePanel()
         flash("checkmark")
     }
@@ -237,7 +238,7 @@ final class MenuBarController: NSObject {
     private func openInApp() {
         let model = AppModel.shared
         if let r = panelModel.current {
-            model.open(toolID: r.tool.id, input: panelModel.clipboardText, options: r.score.options)
+            model.open(toolID: r.tool.id, input: r.inputOverride ?? panelModel.clipboardText, options: r.options)
         }
         closePanel()
         showMainWindow()

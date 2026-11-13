@@ -178,7 +178,19 @@ public struct JSONTOMLTool: DevTool {
         if toJSON {
             return ToolOutput(text: JSONSerializer.string(try TOMLBridge.parse(text)), language: .json)
         }
-        return ToolOutput(text: try TOMLBridge.serialize(try JSONParser.parse(text, options: .json5)).trimmed(), language: .toml)
+        let value = try JSONParser.parse(text, options: .json5)
+        let dropped = Self.nullCount(value)
+        return ToolOutput(text: try TOMLBridge.serialize(value).trimmed(), language: .toml,
+                          warnings: dropped == 0 ? [] : ["\(dropped) null value\(dropped == 1 ? " was" : "s were") omitted: TOML has no null"])
+    }
+
+    static func nullCount(_ v: JSONValue) -> Int {
+        switch v {
+        case .null: 1
+        case .array(let a): a.reduce(0) { $0 + nullCount($1) }
+        case .object(let o): o.reduce(0) { $0 + nullCount($1.value) }
+        default: 0
+        }
     }
     public static func detect(_ s: String) -> DetectionScore? {
         guard let t = TOMLFormatTool.detect(s), t.confidence >= 0.8 else { return nil }

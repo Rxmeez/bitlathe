@@ -6,8 +6,12 @@ import BitlatheCore
 enum YAMLBridge {
     static func parse(_ text: String) throws -> [JSONValue] {
         do {
-            let nodes = try Yams.compose_all(yaml: text)
-            return nodes.map(convert)
+            // YamlSequence swallows parse errors during iteration and exposes them via `.error`.
+            var nodes = try Yams.compose_all(yaml: text)
+            var out: [JSONValue] = []
+            while let n = nodes.next() { out.append(convert(n)) }
+            if let err = nodes.error { throw err }
+            return out
         } catch let e as YamlError {
             throw translate(e)
         }
@@ -66,8 +70,14 @@ enum YAMLBridge {
 
     static func serialize(_ v: JSONValue, indent: Int = 2, width: Int = 80, sortKeys: Bool = false) throws -> String {
         let n = node(from: sortKeys ? v.sortedKeys() : v)
-        var out = try Yams.serialize(node: n, indent: indent, width: width == 0 ? -1 : width, allowUnicode: true, sortKeys: false)
-        if out.hasSuffix("\n") { out.removeLast() }
+        let out = try Yams.serialize(node: n, indent: indent, width: width == 0 ? -1 : width, allowUnicode: true, sortKeys: false)
+        if out.hasSuffix("\n") {
+            // A literal block scalar at the very end of the document needs its final newline ("|" keeps one line break),
+            // so only strip when the stripped text still parses to the same value.
+            let stripped = String(out.dropLast())
+            if !out.contains("|") { return stripped }
+            if let docs = try? parse(stripped), docs.count == 1, docs[0] == v { return stripped }
+        }
         return out
     }
 

@@ -9,7 +9,7 @@ public struct CompressTool: DevTool {
     public static let symbol = "archivebox"
     public static let keywords = ["gzip", "gunzip", "deflate", "inflate", "zlib", "brotli", "lzfse", "lz4", "lzma", "compress", "decompress", "base64"]
     public static let samples = [ToolSample("Compress", String(repeating: "Bitlathe compresses repeated text very well. ", count: 8)),
-                                 ToolSample("Decompress gzip", "H4sIAAAAAAAAA3NKLEnMyUxRyC9KSS1SKMrMS1cAAHUMb8sRAAAA", options: ["mode": .string("decompress")])]
+                                 ToolSample("Decompress gzip", "H4sIAAAAAAAC/3PKLMlJLMlIVUjOzy0oSi0uTi1WKEmtKNFTcMIlAwDtprcnMwAAAA==", options: ["mode": .string("decompress")])]
     public static let optionFields: [OptionField] = [
         .mode([.init("compress", "Compress"), .init("decompress", "Decompress")], default: "compress"),
         .picker("algorithm", "Algorithm", [.init("auto", "Auto-detect")] + Compressor.Algorithm.allCases.map { OptionChoice($0.rawValue, $0.title) }, default: "gzip"),

@@ -39,7 +39,7 @@ public struct UnicodeEscapeTool: DevTool {
                 case "decimal": out += "&#\(v);"
                 case "hex": out += String(format: "&#x%X;", v)
                 case "percent": out += String(u).utf8.map { String(format: "%%%02X", $0) }.joined()
-                case "codepoint": out += String(format: "U+%04X", v) + (options.scope == "all" ? " " : "")
+                case "codepoint": out += String(format: "U+%04X", v)
                 case "bytes": out += String(u).utf8.map { String(format: "\\x%02X", $0) }.joined()
                 case "css": out += String(format: "\\%04X ", v)
                 default:

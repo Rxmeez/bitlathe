@@ -318,6 +318,12 @@ private struct SuggestionBar: View {
                     Text("·").foregroundStyle(Palette.subtle)
                     Text(reason(for: action)).foregroundStyle(Palette.subtle).lineLimit(1)
                 }
+                if model.isAskingModel {
+                    HStack(spacing: Space.xs) {
+                        ProgressView().controlSize(.mini)
+                        Text("Asking the on-device model…").foregroundStyle(Palette.subtle)
+                    }
+                }
                 if analysis.isSensitive {
                     Label("Contains a secret", systemImage: "lock.fill")
                         .font(.caption.weight(.semibold)).foregroundStyle(Palette.warning)
@@ -335,6 +341,7 @@ private struct SuggestionBar: View {
     }
 
     private func reason(for action: SmartBox.Action) -> String {
+        if action.reason == SmartBox.Advisor.reason { return action.reason + ": it chose the tool, the tool made the result" }
         if action.learned > 0 { return "You chose this \(action.learned)× for this kind of data" }
         // Don't repeat the detection pill ("Valid JSON · Valid JSON").
         if action.reason == analysis.formatName { return model.selected == 0 ? "Best match" : action.tool.name }

@@ -6,18 +6,21 @@ import BitlatheUI
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
 
+    /// Screenshot harness: `-BLSettingsTab Detection` opens on that tab.
+    @State private var tab = UserDefaults.standard.string(forKey: "BLSettingsTab") ?? "General"
+
     var body: some View {
         // Eight tabs at this width fit the toolbar without an overflow (») menu. Editor options live under
         // Appearance and update checks under General, rather than in tabs of their own.
-        TabView {
-            GeneralSettings().frame(width: SettingsMetrics.width, height: 640).tabItem { Label("General", systemImage: "gearshape") }
-            AppearanceSettings().frame(width: SettingsMetrics.width, height: 560).tabItem { Label("Appearance", systemImage: "paintbrush") }
-            DetectionSettings().frame(width: SettingsMetrics.width, height: 520).tabItem { Label("Detection", systemImage: "wand.and.stars") }
-            HistorySettings().frame(width: SettingsMetrics.width, height: 640).tabItem { Label("History & Privacy", systemImage: "clock.arrow.circlepath") }
-            ToolsSettings().frame(width: SettingsMetrics.width, height: 560).tabItem { Label("Tools", systemImage: "wrench.and.screwdriver") }
-            ScriptsSettings().frame(width: SettingsMetrics.width, height: 560).tabItem { Label("Scripts", systemImage: "scroll") } // scripts:
-            IntegrationsSettings().frame(width: SettingsMetrics.width, height: 560).tabItem { Label("Integrations", systemImage: "puzzlepiece.extension") } // integrations:
-            AdvancedSettings().frame(width: SettingsMetrics.width, height: 300).tabItem { Label("Advanced", systemImage: "slider.horizontal.3") }
+        TabView(selection: $tab) {
+            GeneralSettings().frame(width: SettingsMetrics.width, height: 640).tabItem { Label("General", systemImage: "gearshape") }.tag("General")
+            AppearanceSettings().frame(width: SettingsMetrics.width, height: 560).tabItem { Label("Appearance", systemImage: "paintbrush") }.tag("Appearance")
+            DetectionSettings().frame(width: SettingsMetrics.width, height: 520).tabItem { Label("Detection", systemImage: "wand.and.stars") }.tag("Detection")
+            HistorySettings().frame(width: SettingsMetrics.width, height: 640).tabItem { Label("History & Privacy", systemImage: "clock.arrow.circlepath") }.tag("History & Privacy")
+            ToolsSettings().frame(width: SettingsMetrics.width, height: 560).tabItem { Label("Tools", systemImage: "wrench.and.screwdriver") }.tag("Tools")
+            ScriptsSettings().frame(width: SettingsMetrics.width, height: 560).tabItem { Label("Scripts", systemImage: "scroll") }.tag("Scripts") // scripts:
+            IntegrationsSettings().frame(width: SettingsMetrics.width, height: 560).tabItem { Label("Integrations", systemImage: "puzzlepiece.extension") }.tag("Integrations") // integrations:
+            AdvancedSettings().frame(width: SettingsMetrics.width, height: 300).tabItem { Label("Advanced", systemImage: "slider.horizontal.3") }.tag("Advanced")
         }
     }
 }
@@ -29,6 +32,7 @@ struct SettingsFooter: View {
     init(_ text: String) { self.text = text }
     var body: some View {
         Text(text).font(.caption).foregroundStyle(.secondary)
+            .multilineTextAlignment(.leading)
             .frame(maxWidth: .infinity, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, Space.md)   // line up with the text inside the group above
@@ -116,6 +120,7 @@ struct AppearanceSettings: View {
 
 struct DetectionSettings: View {
     @State private var settings = Settings.shared
+    @State private var modelStatus: ModelAdvisor.Status?
     @Environment(AppModel.self) private var model
     var body: some View {
         @Bindable var s = settings
@@ -123,6 +128,13 @@ struct DetectionSettings: View {
             Toggle("Detect clipboard when the window becomes active", isOn: $s.detectOnFocus)
             Toggle("Read the clipboard for detection", isOn: $s.detectFromClipboard)
             Toggle("Smart Paste switches tools (⌘⌥V)", isOn: $s.detectOnPaste)
+            Section {
+                Toggle("Ask the on-device model about requests in words", isOn: $s.useOnDeviceModel)
+                    .disabled(modelStatus == .missing)
+            } footer: {
+                SettingsFooter("For a request the Smart Box does not recognise (“what is this timestamp in Tokyo”), the language model built into macOS picks the tool. It only chooses: the tool produces the result, and text that looks like a secret is never shown to it. " + (modelStatus?.summary ?? "Checking…"))
+            }
+            .task { modelStatus = await ModelAdvisor.status(refresh: true) }
             Section {
                 ForEach(ToolCategory.allCases.filter { $0 != .scripting }) { category in
                     let tools = model.registry.tools(in: category)

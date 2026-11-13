@@ -78,6 +78,7 @@ A sortable, filterable table with per-column statistics and CSV or JSON export.
 - **Pipelines.** Chain tools visually, with each step's output shown live. Pipelines can be saved, exported and run from the CLI.
 - **Scratchpad.** <kbd>⌥⌘P</kbd> opens a plain editor where any text tool applies in place, to each selection.
 - **User scripts.** Drop a JavaScript file in the scripts folder and it becomes a tool; ten examples ship with the app. See [Docs/Scripting.md](Docs/Scripting.md).
+- **On-device model (optional).** For a request in words that the Smart Box's rules do not recognise ("what is this timestamp in Tokyo"), the language model built into macOS 26 and later can pick the tool. It only chooses a tool, its options and which part of your text is the data; the tool produces the result, text that looks like a secret is never shown to it, and nothing leaves your Mac. It needs Apple Intelligence to be on; switch it off in Settings › Detection.
 - **AI agents (MCP).** `bl mcp` gives Claude Code and other agents Bitlathe's exact tools over the Model Context Protocol. See [Docs/MCP.md](Docs/MCP.md).
 - **Everywhere else on the Mac.** Services menu items, `bitlathe://` links ([Docs/URLScheme.md](Docs/URLScheme.md)), Shortcuts actions ([Docs/Shortcuts.md](Docs/Shortcuts.md)), Quick Look previews for JWT, CSR, JSON and YAML files, and Raycast and Alfred integrations in `Integrations/`.
 

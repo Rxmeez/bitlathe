@@ -228,6 +228,61 @@ final class SmartBoxTests: XCTestCase {
         XCTAssertEqual(try analyse(prose).formatKey, "words")
     }
 
+    // MARK: On-device model routing (the model's reply is canned here; only the checks are under test)
+
+    func advisorQuery(_ text: String) throws -> SmartBox.Advisor.Query {
+        try XCTUnwrap(SmartBox.Advisor.query(for: text, analysis: try analyse(text), tools: tools), text)
+    }
+
+    func testTheModelIsOnlyAskedAboutRequestsInWords() throws {
+        let q = try advisorQuery("what is 1700000000 in tokyo time")
+        XCTAssertTrue(q.shortlist.contains("time.unix"), q.shortlist.joined(separator: ", "))
+        XCTAssertLessThanOrEqual(q.shortlist.count, 14)
+        XCTAssertTrue(q.instructions.contains("time.unix:"))
+        XCTAssertLessThan(q.instructions.count + q.prompt.count, 6000, "fits a small context window")
+        func asked(_ s: String) throws -> Bool { SmartBox.Advisor.query(for: s, analysis: try analyse(s), tools: tools) != nil }
+        XCTAssertFalse(try asked(#"{"a":1}"#), "recognised data")
+        XCTAssertFalse(try asked("sha256 hello"), "an instruction the rules handle")
+        XCTAssertFalse(try asked("3 uuid v7"), "a command")
+        XCTAssertFalse(try asked("hello"), "one word")
+        XCTAssertFalse(try asked("decode this password=hunter2secret"), "never a secret")
+        let long = String(repeating: "word ", count: 40)
+        XCTAssertFalse(try asked(long), "a paragraph is not a request")
+    }
+
+    func testModelRepliesAreChecked() async throws {
+        let q = try advisorQuery("what is 1700000000 in tokyo time")
+        let pick = try XCTUnwrap(SmartBox.Advisor.action(fromReply: "TOOL: time.unix timeZone=Asia/Tokyo\nINPUT: 1700000000", query: q, tools: tools))
+        XCTAssertEqual(pick.tool.id, "time.unix")
+        XCTAssertEqual(pick.inputOverride, "1700000000")
+        XCTAssertEqual(pick.options["timeZone"], .string("Asia/Tokyo"))
+        XCTAssertEqual(pick.reason, "Suggested by the on-device model")
+        let out = try await pick.tool.run(text: try XCTUnwrap(pick.inputOverride), options: pick.options)
+        XCTAssertTrue(out.metadata.contains { $0.value.contains("2023") }, "the tool, not the model, produces the result")
+
+        // A tool that was not on the list, or no tool: no suggestion.
+        XCTAssertNil(SmartBox.Advisor.action(fromReply: "TOOL: shell.exec rm=-rf\nINPUT: x", query: q, tools: tools))
+        XCTAssertNil(SmartBox.Advisor.action(fromReply: "TOOL: none", query: q, tools: tools))
+        XCTAssertNil(SmartBox.Advisor.action(fromReply: "The answer is 9am.", query: q, tools: tools))
+        // Input the person never typed is refused: with no data of their own, the tool is only offered to open.
+        let invented = try XCTUnwrap(SmartBox.Advisor.action(fromReply: "TOOL: time.unix\nINPUT: 1234567890", query: q, tools: tools))
+        XCTAssertTrue(invented.opensTool)
+        XCTAssertNil(invented.inputOverride)
+        // Unknown options and values are dropped, the rest kept.
+        let sloppy = try XCTUnwrap(SmartBox.Advisor.action(fromReply: "TOOL: `time.unix` unit=fortnights bogus=1 unit=ms\nINPUT: 1700000000", query: q, tools: tools))
+        XCTAssertEqual(sloppy.options, ["unit": .string("ms")])
+    }
+
+    func testModelRequestsUseTheLinesBelowAsData() throws {
+        let text = "turn these into a typescript interface please\nsome text that is not json at all"
+        let q = try advisorQuery(text)
+        let id = try XCTUnwrap(q.shortlist.first)
+        let pick = try XCTUnwrap(SmartBox.Advisor.action(fromReply: "TOOL: \(id)\nINPUT:", query: q, tools: tools))
+        if !pick.opensTool, pick.tool.io.input == .text {
+            XCTAssertEqual(pick.inputOverride, "some text that is not json at all")
+        }
+    }
+
     func testLearningKeysRoundTrip() throws {
         let key = SmartBox.key("json.format", ["mode": .string("minify"), "indent": .string("4")])
         XCTAssertEqual(key, "json.format|indent=4&mode=minify")

@@ -79,6 +79,8 @@ public final class Settings {
     public var detectFromClipboard = true { didSet { set("detectFromClipboard", detectFromClipboard) } }
     public var detectOnPaste = true { didSet { set("detectOnPaste", detectOnPaste) } }
     public var detectionIgnoreList: [String] = [] { didSet { set("detectionIgnoreList", detectionIgnoreList) } }
+    /// Ask the language model built into macOS which tool a request in words means. On this Mac only.
+    public var useOnDeviceModel = true { didSet { set("useOnDeviceModel", useOnDeviceModel) } }
 
     // History & privacy
     public var historyEnabled = true { didSet { set("historyEnabled", historyEnabled) } }
@@ -159,6 +161,7 @@ public final class Settings {
         detectFromClipboard = b("detectFromClipboard", detectFromClipboard)
         detectOnPaste = b("detectOnPaste", detectOnPaste)
         detectionIgnoreList = arr("detectionIgnoreList", detectionIgnoreList)
+        useOnDeviceModel = b("useOnDeviceModel", useOnDeviceModel)
         historyEnabled = b("historyEnabled", historyEnabled)
         historyDisabledTools = arr("historyDisabledTools", historyDisabledTools)
         historyRetentionDays = i("historyRetentionDays", historyRetentionDays)
@@ -253,6 +256,7 @@ public final class Settings {
         detectFromClipboard = fresh.detectFromClipboard
         detectOnPaste = fresh.detectOnPaste
         detectionIgnoreList = fresh.detectionIgnoreList
+        useOnDeviceModel = fresh.useOnDeviceModel
         historyEnabled = fresh.historyEnabled
         historyDisabledTools = fresh.historyDisabledTools
         historyRetentionDays = fresh.historyRetentionDays

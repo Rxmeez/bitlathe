@@ -31,8 +31,12 @@ final class SmartBoxModel {
     private(set) var replacedFrom: String?
     private var replacedText: String?
 
+    /// True while the on-device model is being asked which tool a request in words means.
+    private(set) var isAskingModel = false
+
     weak var app: AppModel?
     private var analyseTask: Task<Void, Never>?
+    private var adviseTask: Task<Void, Never>?
 
     var current: SmartBox.Action? {
         guard let a = analysis, a.actions.indices.contains(selected) else { return nil }
@@ -59,6 +63,8 @@ final class SmartBoxModel {
 
     private func scheduleAnalysis() {
         analyseTask?.cancel()
+        adviseTask?.cancel()
+        isAskingModel = false
         let snapshot = text
         if snapshot.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             analysis = nil; selected = 0; userChose = false; session = nil; chainSession = nil
@@ -90,6 +96,38 @@ final class SmartBoxModel {
             selected = 0
         }
         runCurrent(keepSession: current?.key == previousKey)
+        askModel(about: result)
+    }
+
+    /// A request in words that the rules did not understand: after a pause in typing, the on-device model (when
+    /// there is one, and the setting is on) names the tool. Its pick is checked, then offered first.
+    private func askModel(about result: SmartBox.Analysis) {
+        adviseTask?.cancel()
+        isAskingModel = false
+        let snapshot = text
+        guard Settings.shared.useOnDeviceModel,
+              let query = SmartBox.Advisor.query(for: snapshot, analysis: result, tools: ToolRegistry.shared.tools) else { return }
+        adviseTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(450))
+            guard !Task.isCancelled, await ModelAdvisor.status() == .available, let self, self.text == snapshot else { return }
+            self.isAskingModel = true
+            let reply = await ModelAdvisor.ask(query)
+            guard !Task.isCancelled, self.text == snapshot else { return }
+            self.isAskingModel = false
+            guard let reply, var pick = SmartBox.Advisor.action(fromReply: reply, query: query, tools: ToolRegistry.shared.tools),
+                  var a = self.analysis, a.formatKey == result.formatKey else { return }
+            pick.learned = self.learned[a.formatKey]?[pick.key] ?? 0
+            let chosen = self.current?.key
+            a.actions.removeAll { $0.key == pick.key }
+            a.actions.insert(pick, at: 0)
+            self.analysis = a
+            if self.userChose, let chosen, let i = a.actions.firstIndex(where: { $0.key == chosen }) {
+                self.selected = i            // the person already picked something: the suggestion only joins the row
+            } else {
+                self.selected = 0
+                self.runCurrent(keepSession: false)
+            }
+        }
     }
 
     func choose(_ index: Int) {

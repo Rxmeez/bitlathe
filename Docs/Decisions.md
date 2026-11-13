@@ -42,3 +42,12 @@ Format: date · decision · why · consequences.
   non-persistent data store. Verified: previewing HTML that references a remote stylesheet, script,
   images and an iframe opened no sockets in the app or WebKit's WebContent/Networking processes.
   Links open in the default browser only on an explicit click.
+- **2026-11-13 · The on-device model lives in a helper (`bl-advisor`), and only chooses tools.** Xcode 16.4's SDK has
+  no FoundationModels, but the Command Line Tools on the same Mac do (Swift 6.4, macOS 27 SDK). They cannot build the
+  app (no SwiftUI macro plug-ins), so the model call is a dependency-free SwiftPM executable that `scripts/embed-cli.sh`
+  builds with the Command Line Tools when Xcode's SDK lacks the framework, and with Xcode otherwise (where it reports
+  "built without on-device model support" until Xcode has the SDK). The app runs it from `Contents/Helpers`.
+  The model never produces a result: `SmartBox.Advisor` gives it a shortlist of at most 14 tools, and accepts back
+  only a tool id from that list, option values that tool declares, and input that is a verbatim part of the
+  person's text. Text that looks like a secret is never sent. Consequences: the App Store target, which does not
+  embed helpers, has no model; when Xcode is upgraded the helper could be folded into the app.

@@ -228,3 +228,129 @@ extension SmartBox {
         return hits.values.sorted { $0.count != $1.count ? $0.count > $1.count : $0.order < $1.order }.prefix(limit).map(\.tool)
     }
 }
+
+// MARK: - Requests the rules do not understand: an on-device model picks the tool
+
+extension SmartBox {
+
+    /// Hands a request in plain words ("what is this timestamp in Tokyo") to a language model running on this Mac.
+    /// The model never produces the result. It may only name one of the tools on a shortlist, set that tool's
+    /// options, and point at the part of the person's own text that is the data; all three are checked here, and the
+    /// tool then runs as it always does. A wrong pick is a wrong suggestion, never a wrong answer.
+    public enum Advisor {
+
+        public struct Query: Sendable, Equatable {
+            /// The whole text in the box.
+            public let text: String
+            /// System instructions for the model.
+            public let instructions: String
+            public let prompt: String
+            /// Tool ids the model may choose from.
+            public let shortlist: [String]
+        }
+
+        public static let reason = "Suggested by the on-device model"
+        static let shortlistSize = 14
+        static let sampleLength = 400
+
+        /// A query when the text is a request in words that nothing else understood. Nil for recognised data,
+        /// commands, instructions the rules handle, long prose, and anything that looks like a secret.
+        public static func query(for text: String, analysis: Analysis, tools: [AnyTool]) -> Query? {
+            guard analysis.kind == .words, !analysis.isSensitive else { return nil }
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            let firstLine = String(trimmed.prefix { $0 != "\n" }).trimmingCharacters(in: .whitespaces)
+            // The request is the first line: a few words, not a paragraph.
+            let words = firstLine.split(separator: " ")
+            guard words.count >= 2, words.count <= 16, firstLine.count <= 140, firstLine.contains(where: \.isLetter) else { return nil }
+            guard !looksSecret(trimmed) else { return nil }
+
+            let usable = tools.filter { $0.kind != .pipeline && !$0.sideEffects && ($0.io.input == .text || $0.io.input == .none) }
+            let shortlist = Self.shortlist(for: firstLine, in: usable)
+            guard !shortlist.isEmpty else { return nil }
+
+            let catalogue = shortlist.map { tool -> String in
+                let options = tool.optionFields.filter { !$0.advanced }.compactMap { f -> String? in
+                    switch f.kind {
+                    case .segmented(let c), .picker(let c): return "\(f.key)=\(c.prefix(12).map(\.value).joined(separator: "|"))"
+                    case .text: return f.key == "timeZone" ? "\(f.key)=<IANA zone>" : nil
+                    default: return nil
+                    }
+                }
+                return "\(tool.id): \(tool.summary)" + (options.isEmpty ? "" : " [\(options.joined(separator: " "))]")
+            }.joined(separator: "\n")
+            let instructions = """
+                You route a request to one tool of a developer toolbox. You do not answer the request yourself.
+                Reply with exactly two lines and nothing else:
+                TOOL: <tool id> <option>=<value> ...
+                INPUT: <the part of the request that is the data to transform, copied exactly, or empty>
+                Use only tool ids and option values from the list. Options are optional. If no tool fits, reply: TOOL: none
+
+                Tools:
+                \(catalogue)
+                """
+            let sample = trimmed.count > sampleLength ? String(trimmed.prefix(sampleLength)) + "…" : trimmed
+            return Query(text: trimmed, instructions: instructions, prompt: "Request:\n\(sample)", shortlist: shortlist.map(\.id))
+        }
+
+        /// Tools worth showing the model: those whose name, summary or keywords share words with the request.
+        /// The model's context is small, so it never sees the whole catalogue.
+        static func shortlist(for request: String, in tools: [AnyTool]) -> [AnyTool] {
+            let words = request.lowercased().split { !$0.isLetter && !$0.isNumber }.map(String.init).filter { $0.count >= 2 && !fillerWords.contains($0) }
+            var scores: [String: (tool: AnyTool, score: Int, order: Int)] = [:]
+            for (wi, word) in words.enumerated() {
+                for (rank, tool) in ToolRegistry.search(word, in: tools, limit: 8).enumerated() {
+                    scores[tool.id, default: (tool, 0, wi * 100 + rank)].score += 8 - rank
+                }
+            }
+            return scores.values.sorted { $0.score != $1.score ? $0.score > $1.score : $0.order < $1.order }.prefix(shortlistSize).map(\.tool)
+        }
+
+        /// The model's reply, checked, as an action; nil when it is not a usable pick. Unknown tools are refused,
+        /// unknown options and values are dropped, and the input must be a verbatim part of the person's text.
+        public static func action(fromReply reply: String, query: Query, tools: [AnyTool]) -> Action? {
+            var toolLine: Substring?
+            var input = ""
+            for line in reply.split(separator: "\n", omittingEmptySubsequences: true) {
+                let l = line.trimmingCharacters(in: .whitespaces)
+                if toolLine == nil, l.uppercased().hasPrefix("TOOL:") { toolLine = l.dropFirst(5) }
+                else if l.uppercased().hasPrefix("INPUT:") { input = l.dropFirst(6).trimmingCharacters(in: .whitespaces) }
+            }
+            guard let tokens = toolLine?.split(separator: " ", omittingEmptySubsequences: true), let first = tokens.first else { return nil }
+            let id = first.trimmingCharacters(in: CharacterSet(charactersIn: "`\"'<>.,"))
+            guard query.shortlist.contains(id), let tool = tools.first(where: { $0.id == id }) else { return nil }
+
+            var options: OptionValues = [:]
+            for token in tokens.dropFirst() {
+                let kv = token.split(separator: "=", maxSplits: 1).map(String.init)
+                guard kv.count == 2, let field = tool.optionFields.first(where: { $0.key == kv[0] }) else { continue }
+                let raw = kv[1].trimmingCharacters(in: CharacterSet(charactersIn: "`\"'<>,"))
+                switch field.kind {
+                case .segmented(let c), .picker(let c):
+                    guard c.contains(where: { $0.value == raw }) else { continue }
+                case .text, .multiline:
+                    guard raw.count <= 64, !raw.contains("|") else { continue }
+                case .secret: continue
+                default: break
+                }
+                options[field.key] = OptionValue.parse(raw, like: field)
+            }
+
+            // The data is the person's own text or nothing: a model may not supply it.
+            input = input.trimmingCharacters(in: CharacterSet(charactersIn: "`\"'"))
+            let rest = query.text.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false).dropFirst().first
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) } ?? ""
+            let data: String? = !input.isEmpty && query.text.contains(input) && input != query.text ? input : (rest.isEmpty ? nil : rest)
+            let detail = modeLabel(tool, options)
+            if tool.io.input == .none {
+                return Action(key: key(tool.id, options), tool: tool, options: options, then: nil, inputOverride: "", opensTool: false,
+                              title: tool.name, detail: detail, reason: reason, confidence: 0.9, learned: 0)
+            }
+            guard let data else {
+                return Action(key: "open:" + tool.id, tool: tool, options: options, then: nil, inputOverride: nil, opensTool: true,
+                              title: tool.name, detail: "Open", reason: reason, confidence: 0.9, learned: 0)
+            }
+            return Action(key: key(tool.id, options), tool: tool, options: options, then: nil, inputOverride: data, opensTool: false,
+                          title: tool.name, detail: detail, reason: reason, confidence: 0.9, learned: 0)
+        }
+    }
+}

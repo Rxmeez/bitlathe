@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "BitlatheUI", targets: ["BitlatheUI"]),
         .library(name: "BitlatheTools", targets: ["BitlatheTools"]),
         .executable(name: "bl", targets: ["BitlatheCLI"]),
+        .executable(name: "bl-advisor", targets: ["BitlatheAdvisor"]),
     ],
     dependencies: [
         .package(url: "https://github.com/jpsim/Yams.git", exact: "5.4.0"),
@@ -49,6 +50,13 @@ let package = Package(
             name: "BitlatheCLI",
             dependencies: ["BitlatheCore", "BitlatheTools"],
             path: "Sources/BitlatheCLI",
+            swiftSettings: strict
+        ),
+        // The on-device model helper. No dependencies on purpose: it must build with a toolchain that has the
+        // FoundationModels SDK even when the rest of the package is built with an older Xcode.
+        .executableTarget(
+            name: "BitlatheAdvisor",
+            path: "Sources/BitlatheAdvisor",
             swiftSettings: strict
         ),
         .testTarget(

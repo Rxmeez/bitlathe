@@ -122,7 +122,7 @@ Tool IDs are stable and used by the CLI (`bl <id>`), URL scheme and Shortcuts.
 | Feature | Status |
 |---------|--------|
 | Scratchpad window | ⬜ |
-| User scripts (JavaScriptCore) + 10 examples | 🚧 (loader + sandboxed runner done; examples and UI pending) |
+| User scripts (JavaScriptCore) + 10 examples | ✅ (loader, 2 s sandboxed runner, folder watch + hot reload, bookmarked folder, Settings > Scripts, 10 bundled examples; see Docs/Scripting.md) |
 | Pipelines (visual chain, save, export, hotkey, CLI) | 🚧 (engine + `bl pipe` done; visual editor pending) |
 
 ## App-level

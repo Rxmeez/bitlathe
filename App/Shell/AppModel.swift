@@ -35,6 +35,7 @@ final class AppModel {
 
     init() {
         ToolCatalog.registerAll(in: registry)
+        ScriptsManager.shared.start(registry: registry) // scripts:
         selectedToolID = registry.tool(settings.lastToolID)?.id ?? registry.tools.first?.id
         Task { await refreshUsage() }
         #if DEBUG

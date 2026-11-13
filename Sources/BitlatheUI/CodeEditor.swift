@@ -458,11 +458,17 @@ public final class LineNumberRulerView: NSRulerView {
     private func rebuildLineIndex() {
         guard let tv = textView else { return }
         var starts = [0]
-        let s = tv.string.utf16
-        var i = 0
-        for u in s {
-            i += 1
-            if u == 10 { starts.append(i) }
+        // Scan the backing NSString in 64K-unit chunks: iterating `string.utf16` on a bridged 10 MB string is
+        // an order of magnitude slower than bulk `getCharacters`.
+        let ns = tv.string as NSString
+        let total = ns.length
+        var buffer = [unichar](repeating: 0, count: 65_536)
+        var base = 0
+        while base < total {
+            let n = min(buffer.count, total - base)
+            ns.getCharacters(&buffer, range: NSRange(location: base, length: n))
+            for k in 0..<n where buffer[k] == 10 { starts.append(base + k + 1) }
+            base += n
         }
         lineStarts = starts
         lineIndexValid = true

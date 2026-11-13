@@ -11,70 +11,118 @@ public enum DiffEngine {
         public var newIndex: Int?
     }
 
+    /// Largest edit distance explored in a single middle-snake search before that region is reported as wholly changed.
+    static let maxSearchDepth = 6_000
+
     public static func diff<T: Equatable & Sendable & Hashable>(_ a: [T], _ b: [T]) -> [Edit<T>] {
-        // Trim common prefix/suffix for speed.
-        var start = 0
-        while start < a.count, start < b.count, a[start] == b[start] { start += 1 }
-        var endA = a.count, endB = b.count
-        while endA > start, endB > start, a[endA - 1] == b[endB - 1] { endA -= 1; endB -= 1 }
+        // Intern tokens as dense integers so the inner loop compares Ints, not Strings.
+        var ids: [T: Int] = [:]
+        ids.reserveCapacity(a.count + b.count)
+        func intern(_ t: T) -> Int {
+            if let i = ids[t] { return i }
+            let i = ids.count
+            ids[t] = i
+            return i
+        }
+        let ia = a.map(intern), ib = b.map(intern)
+        var solver = MyersSolver(a: ia, b: ib)
+        solver.solve(0, ia.count, 0, ib.count)
         var edits: [Edit<T>] = []
-        for i in 0..<start { edits.append(Edit(op: .equal, token: a[i], oldIndex: i, newIndex: i)) }
-        let midA = Array(a[start..<endA]), midB = Array(b[start..<endB])
-        if !midA.isEmpty || !midB.isEmpty {
-            if midA.count * midB.count > 4_000_000 {
-                // Too big for O(ND) in reasonable memory; fall back to a simple LCS-free diff.
-                for (i, t) in midA.enumerated() { edits.append(Edit(op: .delete, token: t, oldIndex: start + i, newIndex: nil)) }
-                for (i, t) in midB.enumerated() { edits.append(Edit(op: .insert, token: t, oldIndex: nil, newIndex: start + i)) }
+        edits.reserveCapacity(Swift.max(a.count, b.count) + 16)
+        var i = 0, j = 0
+        while i < a.count || j < b.count {
+            if i < a.count, solver.deleted[i] {
+                edits.append(Edit(op: .delete, token: a[i], oldIndex: i, newIndex: nil)); i += 1
+            } else if j < b.count, solver.inserted[j] {
+                edits.append(Edit(op: .insert, token: b[j], oldIndex: nil, newIndex: j)); j += 1
             } else {
-                edits += myers(midA, midB, offsetA: start, offsetB: start)
+                edits.append(Edit(op: .equal, token: a[i], oldIndex: i, newIndex: j)); i += 1; j += 1
             }
         }
-        for i in endA..<a.count { edits.append(Edit(op: .equal, token: a[i], oldIndex: i, newIndex: i - endA + endB)) }
         return edits
     }
 
-    private static func myers<T: Equatable & Sendable>(_ a: [T], _ b: [T], offsetA: Int, offsetB: Int) -> [Edit<T>] {
-        let n = a.count, m = b.count
-        let max = n + m
-        var v = [Int](repeating: 0, count: 2 * max + 2)
-        var trace: [[Int]] = []
-        var found = false
-        outer: for d in 0...max {
-            trace.append(v)
-            var k = -d
-            while k <= d {
-                let idx = k + max
-                var x: Int
-                if k == -d || (k != d && v[idx - 1] < v[idx + 1]) { x = v[idx + 1] } else { x = v[idx - 1] + 1 }
-                var y = x - k
-                while x < n, y < m, a[x] == b[y] { x += 1; y += 1 }
-                v[idx] = x
-                if x >= n, y >= m { found = true; break outer }
-                k += 2
-            }
+    /// Linear-space Myers (1986 section 4b): find the middle snake, recurse on both halves.
+    /// Memory is O(N + M); time is O(ND) with D bounded by `maxSearchDepth` per region.
+    private struct MyersSolver {
+        let a: [Int]
+        let b: [Int]
+        var deleted: [Bool]
+        var inserted: [Bool]
+        var vf: [Int]
+        var vb: [Int]
+
+        init(a: [Int], b: [Int]) {
+            self.a = a
+            self.b = b
+            deleted = [Bool](repeating: false, count: a.count)
+            inserted = [Bool](repeating: false, count: b.count)
+            let size = 2 * Swift.min(a.count + b.count, DiffEngine.maxSearchDepth) + 4
+            vf = [Int](repeating: 0, count: size)
+            vb = [Int](repeating: 0, count: size)
         }
-        _ = found
-        // Backtrack
-        var edits: [Edit<T>] = []
-        var x = n, y = m
-        for d in stride(from: trace.count - 1, through: 0, by: -1) {
-            let v = trace[d]
-            let k = x - y
-            let idx = k + max
-            let prevK: Int
-            if k == -d || (k != d && v[idx - 1] < v[idx + 1]) { prevK = k + 1 } else { prevK = k - 1 }
-            let prevX = v[prevK + max]
-            let prevY = prevX - prevK
-            while x > prevX, y > prevY {
-                x -= 1; y -= 1
-                edits.append(Edit(op: .equal, token: a[x], oldIndex: offsetA + x, newIndex: offsetB + y))
+
+        mutating func solve(_ aLo0: Int, _ aHi0: Int, _ bLo0: Int, _ bHi0: Int) {
+            var aLo = aLo0, aHi = aHi0, bLo = bLo0, bHi = bHi0
+            while aLo < aHi, bLo < bHi, a[aLo] == b[bLo] { aLo += 1; bLo += 1 }
+            while aLo < aHi, bLo < bHi, a[aHi - 1] == b[bHi - 1] { aHi -= 1; bHi -= 1 }
+            if aLo == aHi {
+                for j in bLo..<bHi { inserted[j] = true }
+                return
             }
-            if d > 0 {
-                if x == prevX { y -= 1; edits.append(Edit(op: .insert, token: b[y], oldIndex: nil, newIndex: offsetB + y)) }
-                else { x -= 1; edits.append(Edit(op: .delete, token: a[x], oldIndex: offsetA + x, newIndex: nil)) }
+            if bLo == bHi {
+                for i in aLo..<aHi { deleted[i] = true }
+                return
             }
+            guard let (xs, ys, xe, ye) = middleSnake(aLo, aHi, bLo, bHi) else {
+                // Too different to align cheaply: report the region as replaced.
+                for i in aLo..<aHi { deleted[i] = true }
+                for j in bLo..<bHi { inserted[j] = true }
+                return
+            }
+            solve(aLo, aLo + xs, bLo, bLo + ys)
+            solve(aLo + xe, aHi, bLo + ye, bHi)
         }
-        return edits.reversed()
+
+        /// Returns the middle snake in coordinates relative to (aLo, bLo), or nil when the search budget is exhausted.
+        private mutating func middleSnake(_ aLo: Int, _ aHi: Int, _ bLo: Int, _ bHi: Int) -> (Int, Int, Int, Int)? {
+            let n = aHi - aLo, m = bHi - bLo
+            let delta = n - m
+            let odd = delta & 1 != 0
+            let maxD = Swift.min((n + m + 1) / 2, DiffEngine.maxSearchDepth)
+            let off = maxD + 1
+            vf[off + 1] = 0
+            vb[off + 1] = 0
+            for d in 0...maxD {
+                var k = -d
+                while k <= d {
+                    var x = (k == -d || (k != d && vf[off + k - 1] < vf[off + k + 1])) ? vf[off + k + 1] : vf[off + k - 1] + 1
+                    var y = x - k
+                    let x0 = x, y0 = y
+                    while x < n, y < m, a[aLo + x] == b[bLo + y] { x += 1; y += 1 }
+                    vf[off + k] = x
+                    if odd {
+                        let kb = delta - k
+                        if kb >= -(d - 1), kb <= d - 1, x + vb[off + kb] >= n { return (x0, y0, x, y) }
+                    }
+                    k += 2
+                }
+                k = -d
+                while k <= d {
+                    var x = (k == -d || (k != d && vb[off + k - 1] < vb[off + k + 1])) ? vb[off + k + 1] : vb[off + k - 1] + 1
+                    var y = x - k
+                    let x0 = x, y0 = y
+                    while x < n, y < m, a[aLo + n - 1 - x] == b[bLo + m - 1 - y] { x += 1; y += 1 }
+                    vb[off + k] = x
+                    if !odd {
+                        let kf = delta - k
+                        if kf >= -d, kf <= d, vf[off + kf] + x >= n { return (n - x, m - y, n - x0, m - y0) }
+                    }
+                    k += 2
+                }
+            }
+            return nil
+        }
     }
 
     // MARK: Tokenisers

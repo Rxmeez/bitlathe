@@ -143,6 +143,7 @@ public struct JSONParser {
     private var pos = 0
     private let options: Options
     private var depth = 0
+    private var valueCounter = 0
 
     public static func parse(_ text: String, options: Options = .strict) throws -> JSONValue {
         var p = JSONParser(bytes: Array(text.utf8), options: options)
@@ -215,6 +216,8 @@ public struct JSONParser {
         depth += 1
         defer { depth -= 1 }
         if depth > 512 { throw error("Nesting too deep") }
+        valueCounter &+= 1
+        if valueCounter & 0xFFF == 0, Task.isCancelled { throw CancellationError() }
         switch bytes[pos] {
         case 0x7B: return try parseObject()
         case 0x5B: return try parseArray()
@@ -322,7 +325,23 @@ public struct JSONParser {
     private mutating func parseString(quote: UInt8) throws -> String {
         let startPos = pos
         pos += 1
+        // Fast path: no escapes, no control characters. Decode the slice in one go.
+        var scan = pos
+        let count = bytes.count
+        while scan < count {
+            let c = bytes[scan]
+            if c == quote {
+                let str = String(decoding: bytes[pos..<scan], as: UTF8.self)
+                pos = scan + 1
+                return str
+            }
+            if c == 0x5C || c < 0x20 { break }
+            scan += 1
+        }
         var out = [UInt8]()
+        out.reserveCapacity(scan - pos + 16)
+        out.append(contentsOf: bytes[pos..<scan])
+        pos = scan
         while true {
             guard pos < bytes.count else { throw error("Unterminated string", hint: "Missing closing quote", at: startPos) }
             let b = bytes[pos]
@@ -460,77 +479,173 @@ public struct JSONSerializerOptions: Sendable {
 
 public enum JSONSerializer {
     public static func string(_ value: JSONValue, options: JSONSerializerOptions = .pretty) -> String {
-        var out = ""
-        out.reserveCapacity(1024)
-        let v = options.sortKeys ? value.sortedKeys() : value
-        write(v, to: &out, level: 0, options: options)
-        return out
+        var w = Writer(options: options, checksCancellation: false)
+        // Non-throwing mode never throws.
+        try? w.run(value)
+        return String(decoding: w.out, as: UTF8.self)
     }
 
-    private static func write(_ v: JSONValue, to out: inout String, level: Int, options: JSONSerializerOptions) {
-        let pretty = options.indent > 0 || options.useTabs
-        let unit = options.useTabs ? "\t" : String(repeating: " ", count: options.indent)
-        let nl = pretty ? "\n" : ""
-        let pad = pretty ? String(repeating: unit, count: level + 1) : ""
-        let padEnd = pretty ? String(repeating: unit, count: level) : ""
-        switch v {
-        case .null: out += "null"
-        case .bool(let b): out += b ? "true" : "false"
-        case .number(let s): out += s
-        case .string(let s): writeString(s, to: &out, options: options)
-        case .array(let a):
-            if a.isEmpty { out += "[]"; return }
-            out += "[" + nl
-            for (i, item) in a.enumerated() {
-                out += pad
-                write(item, to: &out, level: level + 1, options: options)
-                if i < a.count - 1 { out += "," }
-                out += nl
-            }
-            out += padEnd + "]"
-        case .object(let o):
-            if o.isEmpty { out += "{}"; return }
-            out += "{" + nl
-            for (i, pair) in o.enumerated() {
-                out += pad
-                writeString(pair.key, to: &out, options: options)
-                out += (pretty && options.spaceAfterColon) ? ": " : ":"
-                write(pair.value, to: &out, level: level + 1, options: options)
-                if i < o.count - 1 { out += "," }
-                out += nl
-            }
-            out += padEnd + "}"
+    /// Like `string(_:options:)` but checks `Task.isCancelled` periodically and throws `CancellationError`.
+    public static func stringCancellable(_ value: JSONValue, options: JSONSerializerOptions = .pretty) throws -> String {
+        var w = Writer(options: options, checksCancellation: true)
+        try w.run(value)
+        return String(decoding: w.out, as: UTF8.self)
+    }
+
+    /// Byte-level writer: appends UTF-8 into one `[UInt8]` buffer, copying clean string runs in bulk.
+    private struct Writer {
+        var out: [UInt8] = []
+        let options: JSONSerializerOptions
+        let pretty: Bool
+        let unit: [UInt8]
+        let checksCancellation: Bool
+        var counter = 0
+        var pads: [[UInt8]] = []
+
+        init(options: JSONSerializerOptions, checksCancellation: Bool) {
+            self.options = options
+            self.checksCancellation = checksCancellation
+            pretty = options.indent > 0 || options.useTabs
+            unit = options.useTabs ? [0x09] : [UInt8](repeating: 0x20, count: options.indent)
+            out.reserveCapacity(4096)
         }
+
+        mutating func run(_ value: JSONValue) throws {
+            let v = options.sortKeys ? value.sortedKeys() : value
+            try write(v, level: 0)
+        }
+
+        private mutating func pad(_ level: Int) {
+            guard pretty else { return }
+            while pads.count <= level {
+                pads.append(Array((0..<pads.count).map { _ in unit }.joined()))
+            }
+            out.append(contentsOf: pads[level])
+        }
+
+        @inline(__always) private mutating func append(_ s: StaticString) {
+            s.withUTF8Buffer { out.append(contentsOf: $0) }
+        }
+
+        private mutating func tick() throws {
+            counter &+= 1
+            if checksCancellation, counter & 0x3FF == 0, Task.isCancelled { throw CancellationError() }
+        }
+
+        private mutating func write(_ v: JSONValue, level: Int) throws {
+            switch v {
+            case .null: append("null")
+            case .bool(let b): if b { append("true") } else { append("false") }
+            case .number(let s): out.append(contentsOf: s.utf8)
+            case .string(let s): JSONSerializer.writeString(s, to: &out, options: options)
+            case .array(let a):
+                if a.isEmpty { append("[]"); return }
+                out.append(0x5B)
+                if pretty { out.append(0x0A) }
+                let last = a.count - 1
+                for (i, item) in a.enumerated() {
+                    try tick()
+                    pad(level + 1)
+                    try write(item, level: level + 1)
+                    if i < last { out.append(0x2C) }
+                    if pretty { out.append(0x0A) }
+                }
+                pad(level)
+                out.append(0x5D)
+            case .object(let o):
+                if o.isEmpty { append("{}"); return }
+                out.append(0x7B)
+                if pretty { out.append(0x0A) }
+                let last = o.count - 1
+                for (i, pair) in o.enumerated() {
+                    try tick()
+                    pad(level + 1)
+                    JSONSerializer.writeString(pair.key, to: &out, options: options)
+                    out.append(0x3A)
+                    if pretty && options.spaceAfterColon { out.append(0x20) }
+                    try write(pair.value, level: level + 1)
+                    if i < last { out.append(0x2C) }
+                    if pretty { out.append(0x0A) }
+                }
+                pad(level)
+                out.append(0x7D)
+            }
+        }
+    }
+
+    private static let hexDigits: [UInt8] = Array("0123456789abcdef".utf8)
+
+    private static func appendUnicodeEscape(_ v: UInt32, to out: inout [UInt8]) {
+        out.append(0x5C); out.append(0x75)
+        out.append(hexDigits[Int((v >> 12) & 0xF)]); out.append(hexDigits[Int((v >> 8) & 0xF)])
+        out.append(hexDigits[Int((v >> 4) & 0xF)]); out.append(hexDigits[Int(v & 0xF)])
+    }
+
+    /// Appends the quoted, escaped form of `s` as UTF-8 bytes.
+    static func writeString(_ s: String, to out: inout [UInt8], options: JSONSerializerOptions) {
+        out.append(0x22)
+        var s = s
+        s.withUTF8 { buf in
+            let n = buf.count
+            var runStart = 0
+            var i = 0
+            @inline(__always) func flush(upTo end: Int) {
+                if end > runStart { out.append(contentsOf: UnsafeBufferPointer(rebasing: buf[runStart..<end])) }
+            }
+            while i < n {
+                let b = buf[i]
+                if b >= 0x20, b != 0x22, b != 0x5C, b != 0x7F, b != 0x2F, b < 0x80 { i += 1; continue }
+                if b >= 0x80 {
+                    // Multi-byte scalar: only U+2028/2029 always escape; everything else only when escapeNonASCII.
+                    if !options.escapeNonASCII {
+                        if b == 0xE2, i + 2 < n, buf[i + 1] == 0x80, buf[i + 2] == 0xA8 || buf[i + 2] == 0xA9 {
+                            flush(upTo: i)
+                            appendUnicodeEscape(buf[i + 2] == 0xA8 ? 0x2028 : 0x2029, to: &out)
+                            i += 3; runStart = i
+                        } else {
+                            i += 1
+                        }
+                        continue
+                    }
+                    flush(upTo: i)
+                    let len = b >= 0xF0 ? 4 : (b >= 0xE0 ? 3 : 2)
+                    let end = Swift.min(i + len, n)
+                    let scalar = String(decoding: UnsafeBufferPointer(rebasing: buf[i..<end]), as: UTF8.self).unicodeScalars.first!   // swiftlint:disable:this force_unwrapping
+                    let v = scalar.value
+                    if v > 0xFFFF {
+                        let w = v - 0x10000
+                        appendUnicodeEscape(0xD800 + (w >> 10), to: &out)
+                        appendUnicodeEscape(0xDC00 + (w & 0x3FF), to: &out)
+                    } else {
+                        appendUnicodeEscape(v, to: &out)
+                    }
+                    i = end; runStart = i
+                    continue
+                }
+                if b == 0x2F, !options.escapeSlashes { i += 1; continue }
+                flush(upTo: i)
+                switch b {
+                case 0x22: out.append(0x5C); out.append(0x22)
+                case 0x5C: out.append(0x5C); out.append(0x5C)
+                case 0x2F: out.append(0x5C); out.append(0x2F)
+                case 0x0A: out.append(0x5C); out.append(0x6E)
+                case 0x0D: out.append(0x5C); out.append(0x72)
+                case 0x09: out.append(0x5C); out.append(0x74)
+                case 0x08: out.append(0x5C); out.append(0x62)
+                case 0x0C: out.append(0x5C); out.append(0x66)
+                default: appendUnicodeEscape(UInt32(b), to: &out)
+                }
+                i += 1; runStart = i
+            }
+            flush(upTo: n)
+        }
+        out.append(0x22)
     }
 
     public static func writeString(_ s: String, to out: inout String, options: JSONSerializerOptions) {
-        out += "\""
-        for u in s.unicodeScalars {
-            switch u {
-            case "\"": out += "\\\""
-            case "\\": out += "\\\\"
-            case "\n": out += "\\n"
-            case "\r": out += "\\r"
-            case "\t": out += "\\t"
-            case "\u{08}": out += "\\b"
-            case "\u{0C}": out += "\\f"
-            case "/": out += options.escapeSlashes ? "\\/" : "/"
-            default:
-                if u.value < 0x20 || u.value == 0x7F || u.value == 0x2028 || u.value == 0x2029 {
-                    out += String(format: "\\u%04x", u.value)
-                } else if options.escapeNonASCII, u.value > 0x7E {
-                    if u.value > 0xFFFF {
-                        let v = u.value - 0x10000
-                        out += String(format: "\\u%04x\\u%04x", 0xD800 + (v >> 10), 0xDC00 + (v & 0x3FF))
-                    } else {
-                        out += String(format: "\\u%04x", u.value)
-                    }
-                } else {
-                    out.unicodeScalars.append(u)
-                }
-            }
-        }
-        out += "\""
+        var bytes: [UInt8] = []
+        writeString(s, to: &bytes, options: options)
+        out += String(decoding: bytes, as: UTF8.self)
     }
 
     public static func quoted(_ s: String) -> String {

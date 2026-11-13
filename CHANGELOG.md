@@ -5,6 +5,11 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Added
+- **GitHub Actions Visualizer.** Paste a workflow to see its triggers and jobs as a graph in the order `needs:` runs them, with each job's runner, steps and matrix. Matrices are counted the way GitHub expands them (`include`, `exclude`), and `runs-on: ${{ matrix.os }}` shows the actual runners. Cycles and unknown `needs:` are flagged.
+- **Kubernetes Visualizer.** Paste manifests (several documents, or a `kubectl get -o yaml` list) to see Ingress and Gateway routes → Services → the workloads their selectors pick → ConfigMaps, Secrets, volumes, service accounts and RBAC. Anything referred to but not defined is drawn dashed, and a Service whose selector matches nothing is flagged. Secret values are never shown, only key names.
+- Both open straight from the Smart Box when you paste a workflow or manifests. Click a card for its details and connections; copy the diagram as an image or as Mermaid. In `bl` and for AI agents they print a text outline.
+
 ## [0.1.0] - 2026-11-13
 
 The first release. Bitlathe is a developer toolbox for the Mac with one idea at its centre: you paste, it works out

@@ -62,6 +62,10 @@ GitHub-flavoured Markdown with syntax-highlighted code blocks and Mermaid diagra
 
 ![Markdown preview](Docs/screenshots/markdown-light.png)
 
+### See workflows and manifests as diagrams
+
+Paste a GitHub Actions workflow and see its triggers and jobs in the order `needs:` runs them, with each job's runner, matrix (expanded the way GitHub expands it) and steps. Paste Kubernetes manifests and see how they connect: Ingress → Service → the workloads its selector picks → the ConfigMaps, Secrets, volumes and service accounts they use, with anything referred to but not defined drawn dashed. Click a card for its details; copy the diagram as an image or as Mermaid. Secret values are never shown.
+
 ### Explore CSV
 
 A sortable, filterable table with per-column statistics and CSV or JSON export.
@@ -171,6 +175,8 @@ The full status of each feature, including what is still in progress, is in [TOO
 | `cidr.calc` | CIDR / Subnet Calculator | Network, broadcast, host range, mask and address class for IPv4 and IPv6 blocks |
 | `color.convert` | Colour Converter | HEX, RGB, HSL, HSB, CMYK, OKLCH, Lab and Display P3 with WCAG contrast, palettes and code output |
 | `cron.parse` | Cron Parser | Explain cron expressions in plain English and list the next run times (standard, Quartz and AWS EventBridge) |
+| `gha.visualize` | GitHub Actions Visualizer | See a workflow as a graph: triggers, jobs in dependency order, runners, matrices and steps |
+| `k8s.visualize` | Kubernetes Visualizer | See manifests as a graph: Ingress → Service → workloads → ConfigMaps, Secrets, volumes and accounts |
 | `env.inspect` | .env Inspector | Parse and validate .env files, flag duplicates, mask secrets, and convert to JSON, Docker, shell or Kubernetes |
 | `file.checksum` | File Checksum | Drop a file to get MD5, SHA-1, SHA-256, SHA-512, CRC32 and compare against an expected hash |
 | `hex.viewer` | Hex Viewer | Inspect any file or text as a hex dump with offsets, ASCII column and file-type detection |

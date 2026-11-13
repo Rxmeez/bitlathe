@@ -59,6 +59,8 @@ public enum ToolCatalog {
         // Inspect & debug
         AnyTool(UnixTimeTool.self),
         AnyTool(CronTool.self),
+        AnyTool(GitHubActionsTool.self),
+        AnyTool(KubernetesTool.self),
         AnyTool(URLParseTool.self),
         AnyTool(UserAgentTool.self),
         AnyTool(HTTPReferenceTool.self),

@@ -602,3 +602,14 @@ public enum ToolViewRegistry {
     public static func register(_ id: String, _ builder: @escaping Builder) { builders[id] = builder }
     public static func builder(for id: String) -> Builder? { builders[id] }
 }
+
+/// Views that draw one tool's result (a diagram rather than text), wherever results are shown: the tool's own screen,
+/// the Smart Box. Choosing another output facet (the Mermaid source, say) falls back to the text view.
+@MainActor
+public enum ResultViewRegistry {
+    public typealias Builder = @MainActor (ToolSession, ToolOutput) -> AnyView
+    private static var builders: [String: Builder] = [:]
+
+    public static func register(_ id: String, _ builder: @escaping Builder) { builders[id] = builder }
+    public static func builder(for id: String) -> Builder? { builders[id] }
+}

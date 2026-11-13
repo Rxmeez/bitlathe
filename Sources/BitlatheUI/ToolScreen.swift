@@ -289,7 +289,9 @@ public struct OutputContent: View {
                 }
             }
         case .text(let t):
-            if t.isEmpty, !output.metadata.isEmpty {
+            if session.selectedFacet == nil, let custom = ResultViewRegistry.builder(for: session.tool.id) {
+                custom(session, output)
+            } else if t.isEmpty, !output.metadata.isEmpty {
                 KeyValueList(output.metadata)
             } else if !t.contains("\n"), t.count <= 120, output.metadata.count > 6, session.selectedFacet == nil {
                 VStack(spacing: 0) {

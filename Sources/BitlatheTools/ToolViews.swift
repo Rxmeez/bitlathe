@@ -11,5 +11,9 @@ enum ToolViews {
         DiffToolViewRegistration.register()
         ToolViewRegistry.register("csv.viewer") { session in AnyView(CSVTableView(session: session)) }
         WebPreviewViews.register()
+        for id in [GitHubActionsTool.id, KubernetesTool.id] {
+            ResultViewRegistry.register(id) { session, output in AnyView(DiagramResultView(session: session, output: output)) }
+            ToolViewRegistry.register(id) { session in AnyView(DiagramResultView.Screen(session: session)) }
+        }
     }
 }

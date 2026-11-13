@@ -47,8 +47,16 @@ public final class ToolRegistry {
         tools.filter { $0.category == category && $0.kind == .native }
     }
 
+    /// Tools most people reach for. Among equally good matches they rank first ("base" → Base64 before Base32).
+    public static let everyday: [String] = [
+        "json.format", "base64.text", "jwt.debug", "url.encode", "time.unix", "id.generate", "hash.generate",
+        "regex.test", "text.diff", "color.convert", "html.format", "yaml.format", "cron.parse", "markdown.preview",
+        "sql.format", "qr.code",
+    ]
+
     /// Fuzzy search across names, summaries, ids and keywords.
-    public func search(_ query: String, limit: Int = 50) -> [AnyTool] {
+    /// - Parameter boost: extra score per tool id (e.g. from the user's own usage), added to the match score.
+    public func search(_ query: String, limit: Int = 50, boost: [String: Int] = [:]) -> [AnyTool] {
         let q = query.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return tools }
         return tools
@@ -57,9 +65,12 @@ public final class ToolRegistry {
                 // A tool whose id starts with the query ("json" → json.format) is the canonical tool for that word,
                 // so it outranks tools that merely mention it (JSON ⇄ CSV, YAML ⇄ JSON…).
                 if tool.id.lowercased().hasPrefix(q.lowercased() + ".") { score += 100 }
+                if Self.everyday.contains(tool.id) { score += 12 }
+                score += boost[tool.id] ?? 0
                 return (tool, score)
             }
-            .sorted { $0.1 > $1.1 }
+            // Deterministic order: score, then name, so equal matches never shuffle between keystrokes.
+            .sorted { $0.1 != $1.1 ? $0.1 > $1.1 : $0.0.name.localizedStandardCompare($1.0.name) == .orderedAscending }
             .prefix(limit)
             .map(\.0)
     }

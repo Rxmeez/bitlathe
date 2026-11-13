@@ -8,19 +8,23 @@ public struct InspectorOptions: View {
     public init(session: ToolSession) { self.session = session }
 
     private func visible(_ f: OptionField) -> Bool {
-        guard let c = f.visibleWhen else { return true }
-        return c.values.contains(session.option(c.key).stringValue)
+        f.isVisible(among: session.tool.optionFields) { session.option($0).stringValue }
     }
 
     public var body: some View {
         let fields = session.tool.optionFields.filter(visible)
-        ScrollView {
-            VStack(alignment: .leading, spacing: Space.xl) {
-                section("Options", fields.filter { !$0.advanced })
-                section("Advanced", fields.filter(\.advanced))
+        if fields.isEmpty {
+            Text("No options for the current settings").foregroundStyle(.secondary)
+                .padding().frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Space.xl) {
+                    section("Options", fields.filter { !$0.advanced })
+                    section("Advanced", fields.filter(\.advanced))
+                }
+                .padding(Space.lg)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(Space.lg)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

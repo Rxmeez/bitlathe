@@ -4,19 +4,35 @@ import BitlatheUI
 
 struct SidebarView: View {
     @Environment(AppModel.self) private var model
+    /// The row the user picked. A tool can appear in several sections (Favourites, Frequently used, its category);
+    /// rows carry section-qualified tags so only the clicked row is highlighted, not every copy of the tool.
+    @State private var rowKey: String?
+
+    private var selection: Binding<String?> {
+        Binding(
+            get: {
+                guard let id = model.selectedToolID else { return nil }
+                if let k = rowKey, ToolRow.toolID(from: k) == id { return k }
+                return id
+            },
+            set: { key in
+                rowKey = key
+                model.selectedToolID = key.map(ToolRow.toolID(from:))
+            })
+    }
 
     var body: some View {
         @Bindable var model = model
-        List(selection: $model.selectedToolID) {
+        List(selection: selection) {
             if model.searchText.isEmpty {
                 if model.settings.clipboardHistoryEnabled { // clipboard: only when opted in
                     Section { Label("Clipboard", systemImage: "list.clipboard").tag(ClipboardMonitor.sidebarID) }
                 }
                 if !model.favourites.isEmpty {
-                    Section("Favourites") { toolRows(ids: model.favourites) }
+                    Section("Favourites") { toolRows(ids: model.favourites, section: "fav") }
                 }
                 if model.settings.showFrequentlyUsed, !model.frequent.isEmpty {
-                    Section("Frequently used") { toolRows(ids: model.frequent) }
+                    Section("Frequently used") { toolRows(ids: model.frequent, section: "freq") }
                 }
                 ForEach(ToolCategory.allCases.filter { $0 != .scripting }) { category in
                     let tools = model.tools(in: category)
@@ -63,13 +79,20 @@ struct SidebarView: View {
     }
 
     @ViewBuilder
-    private func toolRows(ids: [String]) -> some View {
-        ForEach(ids.compactMap { model.registry.tool($0) }) { ToolRow(tool: $0) }
+    private func toolRows(ids: [String], section: String) -> some View {
+        ForEach(ids.compactMap { model.registry.tool($0) }) { ToolRow(tool: $0, section: section) }
     }
 }
 
 struct ToolRow: View {
     let tool: AnyTool
+    /// Non-nil for rows in the shortcut sections; their tag is "<section>:<tool id>".
+    var section: String?
+
+    static func toolID(from key: String) -> String {
+        for prefix in ["fav:", "freq:"] where key.hasPrefix(prefix) { return String(key.dropFirst(prefix.count)) }
+        return key
+    }
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow // url-scheme:
 
@@ -80,11 +103,15 @@ struct ToolRow: View {
                 if !model.searchText.isEmpty { Text(tool.summary).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
             }
         } icon: {
+            // Scaled to fit so wide symbols (e.g. "abc", "123") keep the label column aligned.
             Image(systemName: tool.symbol)
+                .resizable()
+                .scaledToFit()
                 .symbolRenderingMode(.hierarchical)
+                .frame(width: 17, height: 15)
                 .frame(width: 20, alignment: .center)
         }
-        .tag(tool.id)
+        .tag(section.map { "\($0):\(tool.id)" } ?? tool.id)
         .contextMenu {
             Button("Open in new window") { openNewWindow(tool) }
             Button(model.favourites.contains(tool.id) ? "Remove from Favourites" : "Add to Favourites") {

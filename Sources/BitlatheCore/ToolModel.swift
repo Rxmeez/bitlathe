@@ -476,6 +476,13 @@ public struct OptionField: Sendable, Identifiable, Hashable {
     public var help: String?
     /// Only show this field when another field has one of these values.
     public var visibleWhen: (key: String, values: [String])?
+
+    /// Whether this field should be shown. A condition on an option the tool does not declare counts as met,
+    /// so shared fields (e.g. "indent, only when mode = format") still appear on tools without a mode.
+    public func isVisible(among fields: [OptionField], value: (String) -> String) -> Bool {
+        guard let c = visibleWhen, fields.contains(where: { $0.key == c.key }) else { return true }
+        return c.values.contains(value(c.key))
+    }
     /// Fields in the same group render together; advanced fields live in the inspector.
     public var advanced: Bool
 

@@ -20,8 +20,7 @@ public struct OptionBar: View {
     }
 
     func isVisible(_ f: OptionField) -> Bool {
-        guard let cond = f.visibleWhen else { return true }
-        return cond.values.contains(session.option(cond.key).stringValue)
+        f.isVisible(among: session.tool.optionFields) { session.option($0).stringValue }
     }
 
     public var body: some View {

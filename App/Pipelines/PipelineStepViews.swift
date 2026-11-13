@@ -152,8 +152,9 @@ struct StepCardView: View {
         let binding = Binding<OptionValues>(get: { editor.options(for: step.id) }, set: { editor.setOptions(step.id, $0) })
         let current = binding.wrappedValue
         let fields = tool.optionFields.filter { f in
-            guard let c = f.visibleWhen else { return true }
-            return c.values.contains((current[c.key] ?? tool.optionFields.first { $0.key == c.key }?.defaultValue ?? .string("")).stringValue)
+            f.isVisible(among: tool.optionFields) { key in
+                (current[key] ?? tool.optionFields.first { $0.key == key }?.defaultValue ?? .string("")).stringValue
+            }
         }
         let basic = fields.filter { !$0.advanced }
         let advanced = fields.filter(\.advanced)

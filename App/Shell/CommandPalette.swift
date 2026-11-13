@@ -224,7 +224,9 @@ struct CommandPalette: View {
             toolItems = tools.prefix(6).map { toolItem($0, q: "") }
         } else {
             toolTitle = "Tools"
-            toolItems = model.registry.search(q, limit: PaletteMetrics.maxTools).map { toolItem($0, q: q) }
+            // Tools you use often get a small nudge among equally good matches.
+            let usage = Dictionary(model.frequent.enumerated().map { ($1, max(10 - $0 * 2, 2)) }, uniquingKeysWith: max)
+            toolItems = model.registry.search(q, limit: PaletteMetrics.maxTools, boost: usage).map { toolItem($0, q: q) }
         }
         if !toolItems.isEmpty { out.append(PaletteSection(title: toolTitle, items: toolItems)) }
 

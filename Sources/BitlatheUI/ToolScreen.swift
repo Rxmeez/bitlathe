@@ -263,13 +263,21 @@ public struct OutputPane: View {
     }
 }
 
-struct OutputContent: View {
+/// Renders a tool's result (text editor, facts, image, binary). Shared by the tool screen and the Smart Box.
+public struct OutputContent: View {
     let payload: ToolPayload
     let output: ToolOutput
     @Bindable var session: ToolSession
     let config: EditorConfig
 
-    var body: some View {
+    public init(payload: ToolPayload, output: ToolOutput, session: ToolSession, config: EditorConfig) {
+        self.payload = payload
+        self.output = output
+        self.session = session
+        self.config = config
+    }
+
+    public var body: some View {
         switch payload {
         case .image(let d, _):
             VStack(spacing: 0) {

@@ -25,6 +25,7 @@ struct SidebarView: View {
         @Bindable var model = model
         List(selection: selection) {
             if model.searchText.isEmpty {
+                Section { Label("Home", systemImage: "house").tag(AppModel.homeID) } // smartbox: the Smart Box
                 if model.settings.clipboardHistoryEnabled { // clipboard: only when opted in
                     Section { Label("Clipboard", systemImage: "list.clipboard").tag(ClipboardMonitor.sidebarID) }
                 }

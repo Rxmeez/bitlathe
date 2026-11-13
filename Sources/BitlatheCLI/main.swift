@@ -24,6 +24,7 @@ func printUsage() {
       bl pipe "<tool> [k=v] | <tool> | …"         run an ad-hoc pipeline
       bl pipeline <name> [file]                   run a saved pipeline
       bl list [--json] [--category <name>]        list tools
+      bl mcp                                      serve the tools to AI agents (Model Context Protocol, stdio)
       bl <tool.id> --help                         show a tool's options
       bl --version
 
@@ -183,6 +184,17 @@ func main() async -> Int32 {
         switch command {
         case "--help", "-h", "help": printUsage(); return 0
         case "--version", "-v", "version": print("bl \(version)"); return 0
+        case "mcp":
+            // Model Context Protocol over stdio: one JSON-RPC message per line in, one per line out. Logs go to stderr.
+            let saved = (try? await DataStore.shared.pipelines()) ?? []
+            let server = MCPServer(tools: registry.tools, pipelines: saved, version: version)
+            stderr("bl mcp: serving \(registry.tools.count) tools on stdio")
+            for try await line in FileHandle.standardInput.bytes.lines {
+                if let reply = await server.handle(line: line) {
+                    FileHandle.standardOutput.write(Data((reply + "\n").utf8))
+                }
+            }
+            return 0
         case "list":
             let json = args.contains("--json")
             var tools = registry.tools

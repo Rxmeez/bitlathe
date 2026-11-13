@@ -284,6 +284,7 @@ struct CommandPalette: View {
         if hasOutput {
             list.append((PaletteItem(id: "act:save", title: "Save output…", symbol: "square.and.arrow.down", shortcut: "⌘S") { session?.saveOutput() }, "export file"))
         }
+        list.append((PaletteItem(id: "act:home", title: "Home", subtitle: "The Smart Box", symbol: "house", shortcut: "⇧⌘H") { [model] in model.goHome() }, "smart box start paste")) // smartbox:
         list.append((PaletteItem(id: "act:smartpaste", title: "Smart paste", subtitle: "Paste into the best matching tool", symbol: "wand.and.stars", shortcut: "⌥⌘V") { [model] in model.smartPaste() }, "detect clipboard"))
         list.append((PaletteItem(id: "act:inspector", title: model.showInspector ? "Hide inspector" : "Show inspector", symbol: "sidebar.trailing", shortcut: "⌥⌘I") { [model] in model.showInspector.toggle() }, "toggle options history"))
         let open = openSettings

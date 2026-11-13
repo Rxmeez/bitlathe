@@ -157,6 +157,7 @@ struct HistorySettings: View {
     @State private var settings = Settings.shared
     @Environment(AppModel.self) private var model
     @State private var confirmClear = false
+    @State private var confirmForget = false
     var body: some View {
         @Bindable var s = settings
         Form {
@@ -168,6 +169,21 @@ struct HistorySettings: View {
                 .confirmationDialog("Delete all history and clipboard entries?", isPresented: $confirmClear) {
                     Button("Delete", role: .destructive) { Task { try? await DataStore.shared.clearHistory(includePinned: false); try? await DataStore.shared.clearClipboard() } }
                 }
+            // smartbox: what the home box learned from your choices
+            Section {
+                LabeledContent("Learned suggestions") {
+                    Button("Forget…", role: .destructive) { confirmForget = true }
+                }
+            } header: {
+                Text("Smart Box")
+            } footer: {
+                SettingsFooter("The home box puts the actions you usually pick first. It learns only on this Mac, from what you copy, replace or open.")
+            }
+            .confirmationDialog("Forget what the Smart Box learned?", isPresented: $confirmForget) {
+                Button("Forget", role: .destructive) { Task { await model.smartBox.forgetLearning() } }
+            } message: {
+                Text("Suggestions go back to detection order. Your history is kept.")
+            }
             ClipboardSettingsSection() // clipboard: opt-in capture, privacy note, exclude list
             Section("Tools that never record history") {
                 ForEach(model.registry.native) { tool in

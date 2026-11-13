@@ -90,6 +90,13 @@ public actor DataStore {
             created_at REAL NOT NULL
         );
         CREATE TABLE IF NOT EXISTS custom_groups (id TEXT PRIMARY KEY, name TEXT NOT NULL, tool_ids TEXT NOT NULL, sort_order INTEGER NOT NULL);
+        CREATE TABLE IF NOT EXISTS smart_choices (
+            format TEXT NOT NULL,
+            action TEXT NOT NULL,
+            count INTEGER NOT NULL DEFAULT 0,
+            last_used REAL NOT NULL,
+            PRIMARY KEY (format, action)
+        );
         """)
         migrated = true   // after the DDL: a concurrent first call must not skip it (actor re-entrancy)
     }
@@ -133,6 +140,43 @@ public actor DataStore {
 
     public func recentInputs(limit: Int = 20) async throws -> [HistoryEntry] {
         try await history(toolID: nil, limit: limit)
+    }
+
+    /// The newest inputs across all tools, newest first, one entry per distinct input (pinned or not).
+    public func latestInputs(limit: Int = 6) async throws -> [HistoryEntry] {
+        try await migrate()
+        let rows = try await db.query("""
+            SELECT * FROM history WHERE id IN (SELECT MAX(id) FROM history GROUP BY input)
+            ORDER BY created_at DESC LIMIT ?
+            """, [.int(Int64(limit))])
+        return rows.map(Self.historyEntry)
+    }
+
+    // MARK: Smart Box learning
+
+    /// Counts one accepted Smart Box action for a kind of data ("json.format" → "convert.yaml-json").
+    public func recordChoice(format: String, action: String) async throws {
+        try await migrate()
+        try await db.execute("""
+            INSERT INTO smart_choices (format, action, count, last_used) VALUES (?, ?, 1, ?)
+            ON CONFLICT(format, action) DO UPDATE SET count = count + 1, last_used = excluded.last_used
+            """, [.text(format), .text(action), .double(Date().timeIntervalSince1970)])
+    }
+
+    /// Everything learned so far: format → action → times accepted.
+    public func choices() async throws -> [String: [String: Int]] {
+        try await migrate()
+        var out: [String: [String: Int]] = [:]
+        for row in try await db.query("SELECT format, action, count FROM smart_choices") {
+            guard let f = row["format"]?.string, let a = row["action"]?.string, let n = row["count"]?.int else { continue }
+            out[f, default: [:]][a] = n
+        }
+        return out
+    }
+
+    public func clearChoices() async throws {
+        try await migrate()
+        try await db.execute("DELETE FROM smart_choices")
     }
 
     public func setPinned(_ id: Int64, _ pinned: Bool, title: String? = nil) async throws {
@@ -321,6 +365,6 @@ public actor DataStore {
 
     public func wipeEverything() async throws {
         try await migrate()
-        try await db.execute("DELETE FROM history; DELETE FROM favourites; DELETE FROM usage; DELETE FROM clipboard; DELETE FROM custom_groups;")
+        try await db.execute("DELETE FROM history; DELETE FROM favourites; DELETE FROM usage; DELETE FROM clipboard; DELETE FROM custom_groups; DELETE FROM smart_choices;")
     }
 }

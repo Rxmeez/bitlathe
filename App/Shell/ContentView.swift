@@ -7,7 +7,8 @@ struct ContentView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openSettings) private var openSettings
-    @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    // smartbox: the window opens on the Smart Box with the tool list tucked away (the sidebar button brings it back).
+    @State private var columnVisibility: NavigationSplitViewVisibility = .detailOnly
     @State private var onboarding = OnboardingController.shared // onboarding
 
     var body: some View {
@@ -18,17 +19,25 @@ struct ContentView: View {
         } detail: {
             detail
         }
-        .navigationTitle(model.selectedTool?.name ?? "Bitlathe")
+        .navigationTitle(model.isHome ? AppFlavour.displayName : (model.selectedTool?.name ?? AppFlavour.displayName))
         .modifier(HideToolbarTitle())
         .toolbar {
+            ToolbarItem(placement: .navigation) {
+                if !model.isHome { // smartbox: way back to the box from any tool
+                    Button { model.goHome() } label: { Label("Home", systemImage: "house") }
+                        .help("Back to the Smart Box (⇧⌘H)")
+                }
+            }
             ToolbarItem(placement: .automatic) { Spacer() }
             ToolbarItem(placement: .automatic) {
                 Button { model.smartPaste() } label: { Label("Smart Paste", systemImage: "wand.and.stars") }
                     .help("Paste into the best matching tool (⌘⌥V)")
             }
             ToolbarItem(placement: .automatic) {
-                Button { model.showInspector.toggle() } label: { Label("Inspector", systemImage: "sidebar.trailing") }
-                    .help("Show options, history and docs (⌥⌘I)")
+                if !model.isHome {
+                    Button { model.showInspector.toggle() } label: { Label("Inspector", systemImage: "sidebar.trailing") }
+                        .help("Show options, history and docs (⌥⌘I)")
+                }
             }
         }
         .overlay { CommandPaletteOverlay() }
@@ -51,7 +60,9 @@ struct ContentView: View {
     @ViewBuilder
     private var detail: some View {
         @Bindable var model = model
-        if model.selectedToolID == ClipboardMonitor.sidebarID, model.settings.clipboardHistoryEnabled {
+        if model.isHome {
+            SmartBoxView(model: model.smartBox) // smartbox: home
+        } else if model.selectedToolID == ClipboardMonitor.sidebarID, model.settings.clipboardHistoryEnabled {
             ClipboardView() // clipboard: opt-in history destination
         } else if let tool = model.selectedTool, tool.kind == .pipeline, let editor = model.pipelines.editor(forToolID: tool.id) { // pipelines:
             PipelineEditorView(editor: editor).id(editor.pipelineID)

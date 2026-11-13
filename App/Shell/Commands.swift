@@ -6,6 +6,7 @@ struct BitlatheCommands: Commands {
     let model: AppModel
     @FocusedValue(\.toolSession) private var session
     @FocusedValue(\.scratchpad) private var scratchpad // scratchpad: ⌘K / ⌘⇧P open the tool picker there
+    @FocusedValue(\.smartBox) private var smartBox // smartbox: Copy/Clear/Swap act on the box when it is in front
 
     var body: some Commands {
         CommandGroup(replacing: .pasteboard) {
@@ -25,10 +26,10 @@ struct BitlatheCommands: Commands {
             Button("Command Palette…") { if let scratchpad { scratchpad.openPicker() } else { model.togglePalette() } }.keyboardShortcut("k")
             Button("Go to Tool or Action…") { if let scratchpad { scratchpad.openPicker() } else { model.togglePalette() } }.keyboardShortcut("p", modifiers: [.command, .shift])
             Divider()
-            Button("Copy Output") { session?.copyOutput() }.keyboardShortcut("c", modifiers: [.command, .shift]).disabled(session?.output == nil)
+            Button("Copy Output") { if let smartBox { smartBox.copy() } else { session?.copyOutput() } }.keyboardShortcut("c", modifiers: [.command, .shift]).disabled(session?.output == nil)
             Button("Replace Clipboard with Output") { session?.replaceClipboardWithOutput() }.keyboardShortcut("v", modifiers: [.command, .shift]).disabled(session?.output == nil)
-            Button("Swap Input and Output") { session?.swapInputOutput() }.keyboardShortcut("s", modifiers: [.command, .shift]).disabled(session?.output == nil)
-            Button("Clear") { session?.clear() }.keyboardShortcut(.delete, modifiers: .command)
+            Button("Swap Input and Output") { if let smartBox { smartBox.replace() } else { session?.swapInputOutput() } }.keyboardShortcut("s", modifiers: [.command, .shift]).disabled(session?.output == nil)
+            Button("Clear") { if let smartBox { smartBox.clear() } else { session?.clear() } }.keyboardShortcut(.delete, modifiers: .command)
             Divider()
             Button("Open File…") { session?.openFile() }.keyboardShortcut("o")
             Button("Save Output…") { session?.saveOutput() }.keyboardShortcut("s")
@@ -38,6 +39,7 @@ struct BitlatheCommands: Commands {
             Button("Detect Clipboard Now") { if let s = Clipboard.string { model.detect(s) } }.keyboardShortcut("d", modifiers: [.command, .shift])
         }
         CommandGroup(after: .sidebar) {
+            Button("Home") { model.goHome() }.keyboardShortcut("h", modifiers: [.command, .shift]) // smartbox:
             Button("Toggle Inspector") { model.showInspector.toggle() }.keyboardShortcut("i", modifiers: [.command, .option])
             Divider()
             Button("Zoom In") { Settings.shared.zoomIn() }.keyboardShortcut("+")

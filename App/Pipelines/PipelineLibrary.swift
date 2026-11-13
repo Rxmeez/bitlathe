@@ -32,7 +32,7 @@ final class PipelineLibrary {
         register()
         // Restore a pipeline that was open at last quit (it was not in the registry when AppModel initialised).
         let last = model.settings.lastToolID
-        if let p = pipelines.first(where: { $0.toolID == last }) { model.selectedToolID = p.toolID }
+        if !model.isHome, let p = pipelines.first(where: { $0.toolID == last }) { model.selectedToolID = p.toolID } // smartbox: launch stays home
         #if DEBUG
         let defaults = UserDefaults.standard
         if let name = defaults.string(forKey: "BLPipeline"), let p = pipelines.first(where: { $0.name == name || $0.slug == name }) {

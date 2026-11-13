@@ -58,6 +58,28 @@ struct IntegrationsSettings: View {
                 }
             }
 
+            // mcp: Bitlathe's tools for AI agents, served by `bl mcp`
+            Section {
+                LabeledContent("Claude Code") {
+                    HStack {
+                        Text(Self.claudeCommand(bl: mcpBinary)).font(Typography.captionMono).foregroundStyle(.secondary)
+                            .textSelection(.enabled).lineLimit(1).truncationMode(.middle).help(Self.claudeCommand(bl: mcpBinary))
+                        CopyButton(text: Self.claudeCommand(bl: mcpBinary))
+                    }
+                }
+                LabeledContent("Other clients") {
+                    HStack {
+                        Text(#"{"mcpServers": {"bitlathe": {"command": "…", "args": ["mcp"]}}}"#)
+                            .font(Typography.captionMono).foregroundStyle(.secondary).lineLimit(1)
+                        CopyButton(text: Self.jsonConfig(bl: mcpBinary))
+                    }
+                }
+            } header: {
+                Text("AI agents (MCP)")
+            } footer: {
+                SettingsFooter("bl mcp gives Claude Code, Claude Desktop and other agents Bitlathe's tools: detect, smart_run, run_tool, list_tools and run_pipeline. It runs on this Mac and only sees what the agent sends it.")
+            }
+
             Section("URL scheme") {
                 TextField("URL", text: $testURL).font(Typography.captionMono).textFieldStyle(.roundedBorder)
                 HStack {
@@ -116,6 +138,20 @@ struct IntegrationsSettings: View {
             return
         }
         urlMessage = NSWorkspace.shared.open(url) ? "Opened." : "Could not open the URL."
+    }
+}
+
+extension IntegrationsSettings {
+    /// The `bl` an agent should launch: the installed copy if there is one, else the one inside this app.
+    var mcpBinary: String { cli.path ?? CLIInstaller.bundledCLI?.path ?? "bl" }
+
+    static func quoted(_ path: String) -> String { path.contains(" ") ? "'\(path)'" : path }
+
+    static func claudeCommand(bl: String) -> String { "claude mcp add bitlathe -- \(quoted(bl)) mcp" }
+
+    static func jsonConfig(bl: String) -> String {
+        let escaped = bl.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+        return "{\n  \"mcpServers\": {\n    \"bitlathe\": { \"command\": \"\(escaped)\", \"args\": [\"mcp\"] }\n  }\n}"
     }
 }
 

@@ -157,8 +157,11 @@ public final class ToolSession: Identifiable {
         isRunning = false
     }
 
+    /// Off for intermediate sessions (the second step of a Smart Box chain), whose input is not something the person typed.
+    public var recordsHistory = true
+
     private func recordHistory(input: ToolInput) {
-        guard Settings.shared.isHistoryEnabled(for: tool.id), case .text(let s) = input.payload else { return }
+        guard recordsHistory, Settings.shared.isHistoryEnabled(for: tool.id), case .text(let s) = input.payload else { return }
         historyTask?.cancel()
         let toolID = tool.id
         let opts = options

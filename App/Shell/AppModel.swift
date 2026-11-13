@@ -12,10 +12,15 @@ final class AppModel {
 
     let registry = ToolRegistry.shared
     let settings = Settings.shared
+    /// smartbox: the home screen (one box that works out what you pasted). Selected when no tool is.
+    static let homeID = "bitlathe.home"
+    let smartBox = SmartBoxModel()
+    var isHome: Bool { selectedToolID == Self.homeID }
+    func goHome() { selectedToolID = Self.homeID }
 
     var selectedToolID: String? {
         didSet {
-            guard let id = selectedToolID, id != oldValue, id != ClipboardMonitor.sidebarID else { return } // clipboard: not a tool
+            guard let id = selectedToolID, id != oldValue, id != ClipboardMonitor.sidebarID, id != Self.homeID else { return } // clipboard/home: not tools
             settings.lastToolID = id
             Task { try? await DataStore.shared.recordUse(id); await refreshUsage() }
         }
@@ -38,13 +43,21 @@ final class AppModel {
     init() {
         ToolCatalog.registerAll(in: registry)
         ScriptsManager.shared.start(registry: registry) // scripts:
-        selectedToolID = registry.tool(settings.lastToolID)?.id ?? registry.tools.first?.id
+        selectedToolID = Self.homeID   // smartbox: always open on the box; tools are one step away
+        smartBox.app = self
         Task { await refreshUsage() }
         ClipboardMonitor.shared.start() // clipboard: begins polling only if the user opted in
         Task { await pipelines.bootstrap(model: self) } // pipelines:
         #if DEBUG
         // Screenshot harness: `open Bitlathe.app --args -BLTool json.format -BLSample 0`
         let defaults = UserDefaults.standard
+        // smartbox: `-BLTool home -BLHomeText64 <base64>` opens the box with text (base64 so JSON survives launch args).
+        if defaults.string(forKey: "BLTool") == "home" {
+            selectedToolID = Self.homeID
+            if let b64 = defaults.string(forKey: "BLHomeText64"), let d = Data(base64Encoded: b64), let t = String(data: d, encoding: .utf8) {
+                smartBox.paste(t)
+            }
+        }
         if let id = defaults.string(forKey: "BLTool"), let tool = registry.tool(id) {
             selectedToolID = id
             if defaults.object(forKey: "BLSample") != nil {
@@ -195,6 +208,7 @@ final class AppModel {
 
     /// "Paste and it just works": paste into the current tool, but if detection is confident about a different tool, switch.
     func smartPaste() {
+        if isHome, let text = Clipboard.string { smartBox.paste(text); return } // smartbox: the box is already smart
         guard let text = Clipboard.string else { currentSession?.pasteFromClipboard(); return }
         if settings.detectOnPaste {
             let report = DetectionEngine.detect(text, tools: registry.tools, ignoring: Set(settings.detectionIgnoreList))

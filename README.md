@@ -2,15 +2,21 @@
 
 **A native macOS developer toolbox. 88 offline utilities, one fast window, one command line.**
 
-Paste something, and Bitlathe works out what it is: JSON, a JWT, a Unix timestamp, a colour, a cron expression. It opens the right tool with your input already in place. Everything runs on your Mac, and nothing you paste is uploaded anywhere.
+Bitlathe opens on one box. Paste anything and it works out what it is (JSON, a JWT, a Unix timestamp, Base64, a colour, a cron expression, a curl command) and shows the most likely result straight away. Alternatives are one key away, and it learns which ones you pick. Everything runs on your Mac, and nothing you paste is uploaded anywhere.
 
-![Bitlathe formatting JSON](Docs/screenshots/json-light.png)
+![The Smart Box decoding Base64 and formatting the JSON inside](Docs/screenshots/smart-box-dark.png)
 
 Bitlathe is written in Swift 6 and SwiftUI for macOS 14 and later. It is not an Electron or web wrapper. Formatters such as Prettier and sql-formatter run inside the system `JavaScriptCore` engine, so there is no Node and no network.
 
 > Status: pre-release (version 0.1.0). Some app-level features are still in progress. See [TOOLS.md](TOOLS.md) for the live checklist.
 
 ## A quick tour
+
+### Paste anything into the Smart Box
+
+The home screen is a single box. Bitlathe recognises what you paste, runs the best tool at once and lists alternatives as chips (⌘1–⌘6). ⌘↩ copies the result, ⇧⌘↩ replaces the box with it, and ⌥↩ opens the full tool screen. When a result is itself data, such as Base64 that hides JSON, it chains the two steps. Typed commands work too: `3 uuid v7`, `password 24`, `now`, `lorem 2 sentences`. The tools you accept most for each kind of data move to the front; this is learned only on your Mac and can be reset in Settings › History & Privacy. The full catalogue is behind ⌘K and the sidebar button.
+
+![The Smart Box home screen](Docs/screenshots/smart-box-home-light.png)
 
 ### Format, validate and explore JSON
 
@@ -72,6 +78,7 @@ A sortable, filterable table with per-column statistics and CSV or JSON export.
 - **Pipelines.** Chain tools visually, with each step's output shown live. Pipelines can be saved, exported and run from the CLI.
 - **Scratchpad.** <kbd>⌥⌘P</kbd> opens a plain editor where any text tool applies in place, to each selection.
 - **User scripts.** Drop a JavaScript file in the scripts folder and it becomes a tool; ten examples ship with the app. See [Docs/Scripting.md](Docs/Scripting.md).
+- **AI agents (MCP).** `bl mcp` gives Claude Code and other agents Bitlathe's exact tools over the Model Context Protocol. See [Docs/MCP.md](Docs/MCP.md).
 - **Everywhere else on the Mac.** Services menu items, `bitlathe://` links ([Docs/URLScheme.md](Docs/URLScheme.md)), Shortcuts actions ([Docs/Shortcuts.md](Docs/Shortcuts.md)), Quick Look previews for JWT, CSR, JSON and YAML files, and Raycast and Alfred integrations in `Integrations/`.
 
 The full status of each feature, including what is still in progress, is in [TOOLS.md](TOOLS.md).

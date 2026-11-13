@@ -133,6 +133,22 @@ per tool; clipboard history is an opt-in setting and is off by default. Inside
 the sandbox the database lives in the app container; the CLI looks for the
 container's copy first so both share one file.
 
+## Smart Box (home)
+
+`SmartBox` (Core) turns text into an `Analysis`: what it is (`formatKey`, the top detected tool's id), whether it
+looks secret, and ranked `Action`s (tool + options, optional second step). Ranking is detection confidence × 100
+plus 4 per time this person accepted the action for that format; mode variants are offered only for formatters;
+`chain(after:output:)` adds "decode, then format" when a first step's output is structured. Typed commands
+(`3 uuid v7`, `password`, `now`, `lorem`) map to generators; other words search the catalogue. The app's
+`SmartBoxModel` runs the chosen action through an ordinary `ToolSession`, records accepted choices in the
+`smart_choices` table and is the default selection (`AppModel.homeID`); the sidebar starts hidden.
+
+## MCP server
+
+`MCPServer` (Core) implements the Model Context Protocol tools `detect`, `smart_run`, `run_tool`, `list_tools` and
+`run_pipeline` over newline-delimited JSON-RPC; `bl mcp` feeds it stdin. Option schemas come from `OptionField`s,
+arguments are type-checked, tools with side effects are hidden. See `Docs/MCP.md`.
+
 ## Smart detection
 
 `DetectionEngine.detect(_:)` trims the sample to 64 KB, runs every registered

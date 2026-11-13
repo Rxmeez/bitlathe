@@ -28,6 +28,7 @@ enum Compressor {
         if b[0] == 0xFD, data.count >= 6, b[1] == 0x37, b[2] == 0x7A, b[3] == 0x58, b[4] == 0x5A { return .lzma }
         if b[0] == 0x62, b[1] == 0x76, b[2] == 0x78 { return .lzfse }  // "bvx"
         if b[0] == 0x04, b[1] == 0x22, b[2] == 0x4D, b[3] == 0x18 { return .lz4 }
+        if b[0] == 0x62, b[1] == 0x76, b[2] == 0x34 { return .lz4 }  // "bv41" / "bv4-" (Apple raw LZ4 blocks)
         return nil
     }
 

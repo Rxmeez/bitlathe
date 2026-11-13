@@ -60,7 +60,10 @@ public struct Base64TextTool: DevTool {
         if let r = t.range(of: "^data:[^,]*,", options: .regularExpression) { t.removeSubrange(r) }
         t = t.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
         t = Detect.padBase64(t)
-        guard let d = Data(base64Encoded: t, options: .ignoreUnknownCharacters), !d.isEmpty || t.isEmpty else {
+        if let bad = t.unicodeScalars.first(where: { !Detect.base64Chars.contains($0) }) {
+            throw ToolError("Invalid Base64 character '\(Character(bad))'")
+        }
+        guard let d = Data(base64Encoded: t), !d.isEmpty || t.isEmpty else {
             if let bad = t.unicodeScalars.first(where: { !Detect.base64Chars.contains($0) }) {
                 throw ToolError("Invalid Base64 character '\(Character(bad))'")
             }

@@ -54,7 +54,11 @@ else
   [[ "$(gh repo view "$RELEASES_REPO" --json visibility --jq .visibility 2>/dev/null)" == PUBLIC ]] || die "$RELEASES_REPO must exist and be public"
   grep -q "SU_FEED_URL: https://github.com/$RELEASES_REPO/releases/latest/download/appcast.xml" project.yml \
     || die "SU_FEED_URL in project.yml must be https://github.com/$RELEASES_REPO/releases/latest/download/appcast.xml, or installed copies will never see updates"
-  (( HAVE_KEYS )) || die "run scripts/setup-signing-keys.sh first"
+  if (( ! HAVE_KEYS )); then
+    # Either the keys were never created, or 1Password did not let us in (Touch ID not approved in time).
+    op vault get "$VAULT" >/dev/null 2>&1 || die "could not reach the 1Password vault \"$VAULT\": approve the Touch ID prompt (or run \`op signin\`), then try again"
+    die "no signing keys in 1Password vault \"$VAULT\": run scripts/setup-signing-keys.sh first"
+  fi
   grep -qE 'SU_PUBLIC_ED_KEY: "[^"]+"' project.yml || die "SU_PUBLIC_ED_KEY is empty in project.yml: run scripts/setup-signing-keys.sh"
   [[ -z "$(git status --porcelain)" ]] || die "commit or stash your changes first"
   [[ "$(git branch --show-current)" == main ]] || die "release from main"

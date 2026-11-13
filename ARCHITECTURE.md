@@ -151,10 +151,11 @@ A `Pipeline` is `[PipelineStep]` where a step is `(toolID, optionValues, enabled
 records every intermediate output, duration and error. Pipelines are persisted
 as JSON in the `pipelines` table of `DataStore` (the same JSON is the import/export
 format) and `Pipeline.asTool` wraps one as an `AnyTool`. `Pipeline.parse` reads the
-`bl pipe "a opt=v | b"` expression syntax. The visual editor is not built yet.
-Known issue: at the time of writing `bl pipe` / `bl pipeline` abort at runtime
-(a trap, exit 133) before running any step; the engine itself is separate from
-that call path.
+`bl pipe "a opt=v | b"` expression syntax. The visual editor lives in
+`App/Pipelines/` (sidebar "Pipelines" section, live per-step previews, reorder,
+import/export `.bitlathe-pipeline`); saved pipelines are registered as tools so
+the palette, CLI and intents can run them. The CLI resolves pipeline steps from
+an immutable tool snapshot because steps run off the main actor.
 
 ## User scripts
 
@@ -162,7 +163,8 @@ JavaScript files in the scripts folder are parsed for a `/** @bitlathe {...} */`
 header (name, description, icon, keywords, detect regex). Each run creates a
 fresh `JSContext` with a tiny API (`input.text`, `input.selection`,
 `input.fullText`, `postInfo`, `postError`) and a 2 s watchdog. See
-`Docs/Scripting.md` once it lands.
+`Docs/Scripting.md`. The app installs 10 example scripts on first run, watches
+the folder for changes and lists load problems in Settings › Scripts.
 
 ## JavaScript formatters
 
@@ -254,15 +256,26 @@ exhaust memory). The app is sandboxed with hardened runtime and
 with a sample (launch arguments such as `-BLTool`, `-BLSample`, `-BLPalette`)
 and captures the window; the launch-argument hooks live in `AppModel`.
 
+Two app targets share one template: `Bitlathe` (Direct: Sparkle updates, `bl`
+embedded in `Contents/Helpers`, `DIRECT_DISTRIBUTION`) and `Bitlathe-AppStore`
+(no Sparkle, no helper). The `BitlatheQuickLook` extension is embedded in both.
+`scripts/` holds archive, export, notarize, dmg and release steps; see
+`Docs/Release.md`.
+
+## System integrations
+
+All live in `App/`: `MenuBar/` (status item, Quick Panel, Carbon global
+hotkeys), `Integrations/` (`bitlathe://` deep links parsed by
+`Core/DeepLink.swift`, the Services provider, headless runner, CLI installer),
+`Intents/` (App Intents and App Shortcuts), `Scratchpad/`, `Clipboard/`
+(opt-in developer clipboard history; the keep/skip filter is
+`Core/ClipboardFilter.swift`) and `Onboarding/`. `Integrations/raycast` and
+`Integrations/alfred` at the repo root wrap the `bl` CLI. Each has a document
+under `Docs/`.
+
 `Entitlement` (`Core/ToolModel.swift`) is the seam for a future free/pro split;
 every tool reports `.free` today.
 
 ## Not built yet
 
-These appear in earlier plans but have no code in this repository today:
-the menu-bar Quick Panel and global hotkeys, the Services menu, App Intents /
-Shortcuts, the `bitlathe://` URL scheme, Raycast and Alfred wrappers, Quick
-Look extensions, on-device AI, the visual pipeline editor, the scratchpad
-window, Sparkle updates, a Homebrew cask and the App Store target. Where one of
-them is in progress on another branch, its own document under `Docs/` is the
-source of truth.
+On-device AI (FoundationModels needs the macOS 26 SDK) and localisation.

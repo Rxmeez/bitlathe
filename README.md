@@ -68,6 +68,11 @@ A sortable, filterable table with per-column statistics and CSV or JSON export.
 - **History, favourites and pinned inputs** per tool, stored locally. An opt-in developer clipboard history is off by default.
 - **Inspector** with options, history and tool details.
 - **Appearance.** Light, dark or automatic, six editor themes, configurable font and zoom.
+- **Menu bar Quick Panel.** Press <kbd>⌃⌥Space</kbd> anywhere to see the clipboard already transformed, then press Return to copy. Option-click the menu bar icon to copy straight away.
+- **Pipelines.** Chain tools visually, with each step's output shown live. Pipelines can be saved, exported and run from the CLI.
+- **Scratchpad.** <kbd>⌥⌘P</kbd> opens a plain editor where any text tool applies in place, to each selection.
+- **User scripts.** Drop a JavaScript file in the scripts folder and it becomes a tool; ten examples ship with the app. See [Docs/Scripting.md](Docs/Scripting.md).
+- **Everywhere else on the Mac.** Services menu items, `bitlathe://` links ([Docs/URLScheme.md](Docs/URLScheme.md)), Shortcuts actions ([Docs/Shortcuts.md](Docs/Shortcuts.md)), Quick Look previews for JWT, CSR, JSON and YAML files, and Raycast and Alfred integrations in `Integrations/`.
 
 The full status of each feature, including what is still in progress, is in [TOOLS.md](TOOLS.md).
 

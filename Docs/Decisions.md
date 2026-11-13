@@ -16,7 +16,7 @@ Format: date · decision · why · consequences.
   rough on macOS 14 and GRDB is a large dependency for four tables.
 - **2026-11-12 · JS formatters in JavaScriptCore.** Prettier 3.10.1,
   sql-formatter 15.9.0, terser 5.51.2, marked 15.0.12, mermaid 11.17.2 and
-  highlight.js 11.12.0 are bundled as resources (all MIT). Loaded lazily, one
+  highlight.js 11.12.0 are bundled as resources (MIT, except Terser: BSD-2-Clause and highlight.js: BSD-3-Clause; see THIRD_PARTY_NOTICES.md). Loaded lazily, one
   warmed context per bundle, no Node, no network.
 - **2026-11-12 · Dropped ua-parser-js** (AGPL). User-agent parsing is our own
   regex table.

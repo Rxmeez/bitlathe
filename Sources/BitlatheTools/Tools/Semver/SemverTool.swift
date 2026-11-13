@@ -166,15 +166,15 @@ public struct SemverRange: Sendable {
                 let hiRaw = String(t[r.upperBound...]).trimmed()
                 guard let lo else { throw ToolError("Invalid range \(t)") }
                 comps.append(Comparator(op: ">=", version: lo))
-                let hiParts = hiRaw.split(separator: ".").count
+                let hiParts = Self.significantParts(hiRaw)
                 if let hi = Semver(hiRaw), hiParts == 3 { comps.append(Comparator(op: "<=", version: hi)) }
                 else if let hi = Self.coerce(hiRaw) { comps.append(Comparator(op: "<", version: hiParts == 1 ? hi.bumped(.major) : hi.bumped(.minor))) }
                 parts.append("from \(lo) up to \(hiRaw) inclusive")
             } else {
                 for token in t.split(separator: " ").map(String.init) {
                     let (op, rest) = Self.splitOp(token)
-                    let numParts = rest.replacingOccurrences(of: "v", with: "").split(separator: "-")[0].split(separator: ".").count
-                    let hasWild = rest.contains("x") || rest.contains("X") || rest.contains("*") || numParts < 3
+                    let numParts = Self.significantParts(rest)
+                    let hasWild = numParts < 3
                     guard let v = Self.coerce(rest) else { throw ToolError("Invalid version \"\(rest)\" in range") }
                     switch op {
                     case "^":
@@ -193,7 +193,10 @@ public struct SemverRange: Sendable {
                         else { comps.append(Comparator(op: op, version: v)) }
                         parts.append("\(Self.word(op)) \(v)")
                     default:
-                        if hasWild {
+                        if numParts == 0 {
+                            comps.append(Comparator(op: ">=", version: v))
+                            parts.append("any version")
+                        } else if hasWild {
                             comps.append(Comparator(op: ">=", version: v))
                             comps.append(Comparator(op: "<", version: numParts == 1 ? v.bumped(.major) : v.bumped(.minor)))
                             parts.append("any \(rest) release")
@@ -224,6 +227,19 @@ public struct SemverRange: Sendable {
     static func splitOp(_ t: String) -> (String, String) {
         for op in [">=", "<=", "^", "~>", "~", ">", "<", "="] where t.hasPrefix(op) { return (op == "~>" ? "~" : op, String(t.dropFirst(op.count)).trimmed()) }
         return ("", t)
+    }
+
+    /// Number of leading version parts that are concrete: "1.2.x" → 2, "1.x" → 1, "*" → 0, "1.2.3-next" → 3.
+    static func significantParts(_ s: String) -> Int {
+        var t = s.trimmed()
+        if t.hasPrefix("v") || t.hasPrefix("V") { t.removeFirst() }
+        let core = t.split(whereSeparator: { $0 == "-" || $0 == "+" }).first.map(String.init) ?? ""
+        var n = 0
+        for part in core.split(separator: ".", omittingEmptySubsequences: false) {
+            if part.isEmpty || part == "x" || part == "X" || part == "*" { break }
+            n += 1
+        }
+        return n
     }
 
     /// Fill missing parts with 0: "1" → 1.0.0, "1.2.x" → 1.2.0

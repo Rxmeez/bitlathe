@@ -85,16 +85,18 @@ public struct ImageConvertTool: DevTool {
         let w = image.width, h = image.height
         let swap = orientation >= 5
         guard let ctx = ImageRender.context(width: swap ? h : w, height: swap ? w : h) else { return nil }
-        var t = CGAffineTransform.identity
+        // Source point (x, y) (y-up, inside w × h) maps to (a·x + c·y + tx, b·x + d·y + ty) on the destination canvas.
+        let W = CGFloat(w), H = CGFloat(h)
+        let t: CGAffineTransform
         switch orientation {
-        case 2: t = CGAffineTransform(scaleX: -1, y: 1).translatedBy(x: -CGFloat(w), y: 0)
-        case 3: t = CGAffineTransform(translationX: CGFloat(w), y: CGFloat(h)).rotated(by: .pi)
-        case 4: t = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: 0, y: -CGFloat(h))
-        case 5: t = CGAffineTransform(translationX: CGFloat(h), y: CGFloat(w)).rotated(by: .pi / 2).scaledBy(x: 1, y: -1).translatedBy(x: 0, y: -CGFloat(h))
-        case 6: t = CGAffineTransform(translationX: CGFloat(h), y: 0).rotated(by: .pi / 2)
-        case 7: t = CGAffineTransform(translationX: 0, y: CGFloat(w)).rotated(by: -.pi / 2).scaledBy(x: 1, y: -1).translatedBy(x: 0, y: -CGFloat(h))
-        case 8: t = CGAffineTransform(translationX: 0, y: CGFloat(w)).rotated(by: -.pi / 2)
-        default: break
+        case 2: t = CGAffineTransform(a: -1, b: 0, c: 0, d: 1, tx: W, ty: 0)     // mirror horizontally
+        case 3: t = CGAffineTransform(a: -1, b: 0, c: 0, d: -1, tx: W, ty: H)    // rotate 180°
+        case 4: t = CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: H)     // mirror vertically
+        case 5: t = CGAffineTransform(a: 0, b: -1, c: -1, d: 0, tx: H, ty: W)    // transpose
+        case 6: t = CGAffineTransform(a: 0, b: -1, c: 1, d: 0, tx: 0, ty: W)     // rotate 90° clockwise
+        case 7: t = CGAffineTransform(a: 0, b: 1, c: 1, d: 0, tx: 0, ty: 0)      // transverse
+        case 8: t = CGAffineTransform(a: 0, b: 1, c: -1, d: 0, tx: H, ty: 0)     // rotate 90° counter-clockwise
+        default: t = .identity
         }
         ctx.concatenate(t)
         ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))

@@ -77,6 +77,11 @@ extension SmartBox {
                 }
             }
 
+            // Counting
+            fixed(["count words in", "count words", "word count of", "word count", "count characters in", "count characters", "character count",
+                   "count chars", "length of", "count lines in", "count lines"],
+                  name: "count", tool: "string.inspect", [:], title: "Count")
+
             // Hashes
             let hashes: [(String, [String], String)] = [
                 ("md5", ["md5"], "MD5"), ("sha1", ["sha1", "sha-1"], "SHA-1"), ("sha256", ["sha256", "sha-256"], "SHA-256"),

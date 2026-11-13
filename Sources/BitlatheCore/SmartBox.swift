@@ -118,6 +118,12 @@ public enum SmartBox {
 
         let usable = tools.filter { $0.io.input == .text && !$0.sideEffects && $0.kind != .pipeline }
         var report = DetectionEngine.detect(text, tools: usable, ignoring: ignoring)
+        // A user script claims text with a regex alone ("has a capital in it"), at a fixed 60 %. A built-in tool that
+        // recognises the same text has looked harder, so it leads and the script follows.
+        func weight(_ r: DetectionResult) -> Double { r.score.confidence - (r.tool.kind == .script ? 0.25 : 0) }
+        if report.results.contains(where: { $0.tool.kind != .script }) {
+            report.results = report.results.enumerated().sorted { weight($0.element) != weight($1.element) ? weight($0.element) > weight($1.element) : $0.offset < $1.offset }.map(\.element)
+        }
         // Broken JSON is not valid JSON, so the formatter barely claims it (or not at all), yet it is the tool that
         // shows where the mistake is, and can usually mend it. Without this the best match is whatever regex fits.
         let nearMiss = "JSON with a mistake"
@@ -125,26 +131,34 @@ public enum SmartBox {
         if looksLikeBrokenJSON(trimmed), !ignoring.contains("json.format"), let json = byID["json.format"],
            (report.results.first { $0.tool.id == "json.format" }?.score.confidence ?? 0) < 0.8 {
             report.results.removeAll { $0.tool.id == "json.format" }
-            report.results.insert(DetectionResult(tool: json, score: DetectionScore(0.8, nearMiss)), at: 0)
-            report.results.sort { $0.score.confidence > $1.score.confidence }
-            if trimmed.utf8.count <= 1_000_000, let repaired = JSONRepair.repair(trimmed) {
+            let repaired = trimmed.utf8.count <= 1_000_000 ? JSONRepair.repair(trimmed) : nil
+            // One valid value per line is JSON Lines, not a mistake: say so, and lead with joining them.
+            let isLines = repaired.map { $0.fixes.count == 1 && $0.fixes[0].hasPrefix("joined") } ?? false
+            report.results.insert(DetectionResult(tool: json, score: DetectionScore(isLines ? 0.9 : 0.8, isLines ? "JSON Lines" : nearMiss)), at: 0)
+            report.results.sort { weight($0) > weight($1) }
+            if let repaired {
                 let options: OptionValues = ["inputMode": .string("repair")]
-                repairAction = Action(key: key(json.id, options), tool: json, options: options, then: nil, inputOverride: nil, opensTool: false,
-                                      title: "Repair JSON", detail: nil, reason: repaired.summary, confidence: 0.82, learned: 0)
+                repairAction = Action(key: key(json.id, options) + (isLines ? "&lines" : ""), tool: json, options: options, then: nil, inputOverride: nil,
+                                      opensTool: false, title: isLines ? "Join into an array" : "Repair JSON", detail: nil,
+                                      reason: repaired.summary, confidence: isLines ? 0.97 : 0.82, learned: 0)
             }
         }
         if let best = report.best {
             // Weak guesses (a Base64 string "could be" an identifier for the case converter) only add noise.
             // User scripts match on a regex alone, so they count as alternatives only when they are as sure as the best.
-            let floor = max(0.45, best.score.confidence - 0.3)
+            let floor = max(0.4, best.score.confidence - 0.3)
             let strong = report.results.filter {
                 $0.tool.id == best.tool.id || ($0.score.confidence >= floor && ($0.tool.kind != .script || $0.score.confidence >= best.score.confidence))
             }
             var actions: [Action] = strong.prefix(limit + 2).map { r in
                 action(r.tool, options: r.score.options, reason: r.score.reason, confidence: r.score.confidence)
             }
-            if best.score.reason != nearMiss { actions.insert(contentsOf: modeVariants(of: best), at: min(1, actions.count)) }
-            if let repairAction { actions.insert(repairAction, at: 0) }
+            if best.score.reason != nearMiss, best.score.reason != "JSON Lines" { actions.insert(contentsOf: modeVariants(of: best), at: min(1, actions.count)) }
+            if let repairAction {
+                // For JSON Lines the plain formatter can only report an error at line 2; the join replaces it.
+                if repairAction.title != "Repair JSON" { actions.removeAll { $0.tool.id == "json.format" } }
+                actions.insert(repairAction, at: 0)
+            }
             let key = best.tool.id
             let sensitive = !best.tool.historyEnabledByDefault || looksSecret(trimmed)
             return Analysis(kind: .data, formatKey: key, formatName: best.score.reason, confidence: best.score.confidence,
@@ -188,6 +202,8 @@ public enum SmartBox {
     /// chained action that runs both. `nil` when the output is not worth a second step.
     public static func chain(after action: Action, output: String, tools: [AnyTool]) -> Action? {
         guard action.then == nil, !action.opensTool, !output.isEmpty, output.utf8.count < DetectionEngine.maxInputBytes else { return nil }
+        // "[]" or "{}" is valid JSON with nothing in it: formatting it adds a step and shows nothing.
+        guard output.trimmingCharacters(in: .whitespacesAndNewlines).count > 2 else { return nil }
         let structured: Set<String> = ["json.format", "yaml.format", "xml.format", "toml.format"]
         let candidates = tools.filter { structured.contains($0.id) }
         guard let best = DetectionEngine.detect(output, tools: candidates).best, best.score.confidence >= 0.9,
@@ -307,8 +323,10 @@ public enum SmartBox {
         return (lines.count, repeated, sorted)
     }
 
+    /// A few words, as a person would type a request. An address, a path or an assignment is one token of data.
     static func isShortPhrase(_ s: String) -> Bool {
         !s.contains("\n") && s.count <= 80 && s.split(separator: " ").count <= 8 && s.contains(where: \.isLetter)
+            && !s.contains(where: { "@/\\=<>{}[]|&%$#;~^".contains($0) })
     }
 
     /// Credentials and keys that should be marked in the UI (and never leave the Mac).

@@ -232,6 +232,12 @@ final class SmartBoxTests: XCTestCase {
         XCTAssertTrue(out.warnings.first?.hasPrefix("Repaired: added 1 missing comma") == true, out.warnings.joined())
         // Balanced but wrong ("looks like JSON with errors" at 55 %) must not lose to a script's regex either.
         XCTAssertEqual(try analyse(#"{"a": 1 "b": 2}"#).actions.first?.title, "Repair JSON")
+        // One value per line is JSON Lines, not a mistake; even someone who usually formats JSON gets the join first.
+        let lines = try analyse("{\"a\":1}\n{\"b\":2}", learned: ["json.format": ["json.format": 2]])
+        XCTAssertEqual(lines.formatName, "JSON Lines")
+        XCTAssertEqual(lines.actions.first?.title, "Join into an array")
+        let joined = try await XCTUnwrap(lines.actions.first).tool.run(text: "{\"a\":1}\n{\"b\":2}", options: XCTUnwrap(lines.actions.first).options)
+        XCTAssertTrue(joined.text.hasPrefix("[\n  {"), joined.text)
         // Valid JSON is unaffected, and text that merely starts with a bracket is not JSON.
         XCTAssertEqual(try analyse(#"{"a":1}"#).formatName.contains("mistake"), false)
         XCTAssertNotEqual(try analyse("[draft] release notes for Friday").actions.first?.tool.id, "json.format")
@@ -252,6 +258,10 @@ final class SmartBoxTests: XCTestCase {
         XCTAssertEqual(fix("{\"a\": \"line one\nline two\"}"), #"{"a":"line one\nline two"}"#)
         XCTAssertEqual(fix(#"{"a": [1, 2}"#), #"{"a":[1,2]}"#)                                         // wrong closer
         XCTAssertEqual(fix(#"{"a": 1} trailing words"#), #"{"a":1}"#)
+        // One value per line: all of them, as an array.
+        XCTAssertEqual(fix("{\"a\":1}\n{\"b\":2}\n{\"c\":3}"), #"[{"a":1},{"b":2},{"c":3}]"#)
+        XCTAssertEqual(JSONRepair.repair("{\"a\":1}\n{\"b\":2}")?.summary, "Joined 2 values into one array")
+        XCTAssertEqual(fix("{'a':1}\n{'b':2,}"), #"[{"a":1},{"b":2}]"#, "each line is mended too")
         // Nothing to do, or not JSON at all: no result.
         XCTAssertNil(fix(#"{"a": 1, "b": [true, null]}"#))
         XCTAssertNil(fix("hello world"))
@@ -328,6 +338,24 @@ final class SmartBoxTests: XCTestCase {
         if !pick.opensTool, pick.tool.io.input == .text {
             XCTAssertEqual(pick.inputOverride, "some text that is not json at all")
         }
+    }
+
+    func testBuiltInToolsLeadOverScriptPatterns() throws {
+        // The example script "camel to snake" matches any camelCase word at a fixed 60 %; the Case Converter shows
+        // every case and should be what you get first.
+        let a = try analyse("helloWorldFoo")
+        XCTAssertEqual(a.actions.first?.tool.id, "text.case", a.actions.map(\.tool.id).joined(separator: ", "))
+    }
+
+    func testCodeAndAddressesAreNotRequests() throws {
+        XCTAssertEqual(try analyse("function f(a,b){return a+b}").actions.first?.tool.id, "js.format")
+        XCTAssertEqual(try analyse("const add = (a, b) => a + b;").actions.first?.tool.id, "js.format")
+        XCTAssertNotEqual(try analyse("let me know when the function is ready").actions.first?.tool.id, "js.format")
+        for token in ["user@example.com", "~/Library/Caches", "a=b"] {
+            XCTAssertFalse(try analyse(token).actions.contains(where: \.opensTool), "\(token) is data, not a search for a tool")
+        }
+        XCTAssertEqual(try analyse("count words in the quick brown fox").actions.first?.tool.id, "string.inspect")
+        XCTAssertEqual(try analyse("count words in the quick brown fox").actions.first?.inputOverride, "the quick brown fox")
     }
 
     func testLearningKeysRoundTrip() throws {

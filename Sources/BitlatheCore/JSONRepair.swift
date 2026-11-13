@@ -20,8 +20,28 @@ public enum JSONRepair {
     /// Returns nil when the text is not JSON-shaped (does not start with `{` or `[`), needed no repair, or could not
     /// be brought to valid JSON.
     public static func repair(_ text: String) -> Result? {
-        var machine = Machine(Array(text.unicodeScalars))
-        guard machine.run(), !machine.counts.isEmpty else { return nil }
+        let scalars = Array(text.unicodeScalars)
+        var machine = Machine(scalars)
+        guard machine.run() else { return nil }
+        // One value per line (JSON Lines, a log): each is read in turn and they are joined into an array, rather
+        // than keeping the first and dropping the rest.
+        var values = [machine.out.joined()]
+        var counts = machine.counts
+        var rest = machine
+        while rest.done, rest.nextStartsValue, values.count < 100_000 {
+            var next = Machine(scalars, from: rest.i)
+            guard next.run() else { break }
+            values.append(next.out.joined())
+            for (fix, n) in next.counts where fix != .extra { counts[fix, default: 0] += n }
+            rest = next
+        }
+        if values.count > 1 {
+            counts[.extra] = rest.counts[.extra]
+            counts[.joined] = values.count
+            machine.out = ["[" + values.joined(separator: ",") + "]"]
+            machine.counts = counts
+        }
+        guard !machine.counts.isEmpty else { return nil }
         let json = machine.out.joined()
         guard let data = json.data(using: .utf8), (try? JSONSerialization.jsonObject(with: data)) != nil else { return nil }
         return Result(json: json, fixes: machine.describe())
@@ -30,7 +50,7 @@ public enum JSONRepair {
     // MARK: - Implementation
 
     private enum Fix: String, CaseIterable {
-        case comma, trailingComma, closed, quotes, key, literal, string, colon, missingValue, comment, extra, bare
+        case joined, comma, trailingComma, closed, quotes, key, literal, string, colon, missingValue, comment, extra, bare
     }
 
     private enum Expect { case key, colon, value, valueOrEnd, commaOrEnd, keyOrEnd }
@@ -44,7 +64,14 @@ public enum JSONRepair {
         var done = false
         var counts: [Fix: Int] = [:]
 
-        init(_ s: [Unicode.Scalar]) { self.s = s }
+        init(_ s: [Unicode.Scalar], from start: Int = 0) { self.s = s; self.i = start }
+
+        /// After a finished value: does another one start here?
+        var nextStartsValue: Bool {
+            var j = i
+            while j < s.count, s[j].properties.isWhitespace || s[j] == "," { j += 1 }
+            return j < s.count && (s[j] == "{" || s[j] == "[")
+        }
 
         mutating func note(_ f: Fix) { counts[f, default: 0] += 1 }
 
@@ -53,6 +80,7 @@ public enum JSONRepair {
             return Fix.allCases.compactMap { f -> String? in
                 guard let c = counts[f] else { return nil }
                 switch f {
+                case .joined: return "joined \(c) values into one array"
                 case .comma: return n(c, "added 1 missing comma", "added # missing commas")
                 case .trailingComma: return n(c, "removed 1 stray comma", "removed # stray commas")
                 case .closed: return n(c, "closed 1 bracket", "closed # brackets")
@@ -87,7 +115,7 @@ public enum JSONRepair {
             }
             if !done { finish() } else {
                 skipSpace()
-                if i < s.count { note(.extra) }
+                if i < s.count, !nextStartsValue { note(.extra) }
             }
             return done
         }

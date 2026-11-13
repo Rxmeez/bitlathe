@@ -161,9 +161,16 @@ public struct JavaScriptFormatTool: DevTool {
     public static func detect(_ s: String) -> DetectionScore? {
         guard !s.hasPrefix("<"), !s.hasPrefix("{"), !s.hasPrefix("[") else { return nil }
         let hits = ["function ", "const ", "let ", "=>", "console.", "require(", "import ", "export ", "var ", "document."].filter { s.contains($0) }.count
-        if hits >= 2 {
+        // Keywords alone also occur in sentences ("let me know when the function is ready"); code has punctuation.
+        if hits >= 2, s.contains(where: { "{}();=".contains($0) }) {
             if s.range(of: ":\\s*(string|number|boolean)\\b|\\binterface\\s+\\w+|\\btype\\s+\\w+\\s*=|<\\w+>\\(", options: .regularExpression) != nil { return DetectionScore(0.55, "Looks like TypeScript") }
             return DetectionScore(0.7, "JavaScript syntax")
+        }
+        // One line of code has one keyword: `function f(a,b){return a+b}`. A declaration at the start, or an arrow
+        // function, with a brace or semicolon somewhere, is code and not a sentence.
+        if hits == 1, s.contains("{") || s.contains(";"),
+           s.range(of: #"^\s*(async\s+)?function\b\s*\w*\s*\(|^\s*(const|let|var)\s+[\w${}\[\], ]+=|^\s*(import|export)\s|\)\s*=>\s*[{(\w]"#, options: .regularExpression) != nil {
+            return DetectionScore(0.6, "JavaScript syntax")
         }
         return nil
     }

@@ -5,6 +5,12 @@ publishes, so add a `## [x.y.z] - YYYY-MM-DD` section before releasing.
 
 ## [Unreleased]
 
+- **JSON Lines.** One JSON value per line is recognised and joined into an array, instead of being reported as an error at line 2.
+- **Code is recognised from one line.** `function f(a,b){return a+b}` opens in the JavaScript formatter; sentences that merely contain "let" and "function" no longer do.
+- **Built-in tools lead over script patterns.** A user script's regex no longer outranks a tool that actually recognises the text.
+- **Counting.** `count words in …`, `word count …`, `length of …`.
+- An email address, a path or `a=b` is treated as data, not as a search for a tool.
+
 ## [0.1.0] - 2026-11-13
 
 First release.

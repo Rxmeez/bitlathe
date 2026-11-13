@@ -13,7 +13,7 @@ public struct UserScript: Sendable, Identifiable, Hashable {
     public let url: URL
     public let source: String
 
-    public static let headerPattern = #"/\*\*\s*@bitlathe\s*(\{[\s\S]*?\})\s*\*/"#
+    public static let headerPattern = #"/\*\*[\s*]*@bitlathe\s*(\{[\s\S]*?\})\s*\*/"#
     public static let boopHeaderPattern = #"/\*\*\s*(\{[\s\S]*?\})\s*\*\*/"#
 
     public init?(url: URL) {
@@ -24,15 +24,7 @@ public struct UserScript: Sendable, Identifiable, Hashable {
     public init?(url: URL, source: String) {
         self.url = url
         self.source = source
-        var meta: [String: Any] = [:]
-        for pattern in [Self.headerPattern, Self.boopHeaderPattern] {
-            if let r = source.range(of: pattern, options: .regularExpression),
-               let inner = source[r].range(of: #"\{[\s\S]*\}"#, options: .regularExpression),
-               let obj = try? JSONSerialization.jsonObject(with: Data(source[inner].utf8), options: [.fragmentsAllowed, .json5Allowed]) as? [String: Any] {
-                meta = obj
-                break
-            }
-        }
+        let meta = Self.parseHeader(source).meta ?? [:]
         let base = url.deletingPathExtension().lastPathComponent
         name = meta["name"] as? String ?? base
         summary = meta["description"] as? String ?? "User script"
@@ -41,6 +33,22 @@ public struct UserScript: Sendable, Identifiable, Hashable {
         keywords = (meta["keywords"] as? [String] ?? tags) + ["script"]
         detectPattern = meta["detect"] as? String
         slug = base.lowercased().map { $0.isLetter || $0.isNumber ? String($0) : "-" }.joined()
+    }
+
+    /// Finds the header comment and parses its JSON. Leading ` * ` comment decoration on each line is ignored.
+    /// `found` is true when a header comment exists even if its JSON is malformed.
+    static func parseHeader(_ source: String) -> (meta: [String: Any]?, found: Bool) {
+        var found = false
+        for pattern in [headerPattern, boopHeaderPattern] {
+            guard let r = source.range(of: pattern, options: .regularExpression),
+                  let inner = source[r].range(of: #"\{[\s\S]*\}"#, options: .regularExpression) else { continue }
+            found = true
+            let json = source[inner].replacingOccurrences(of: #"(?m)^[ \t]*\*(?!/)[ \t]?"#, with: "", options: .regularExpression)
+            if let obj = try? JSONSerialization.jsonObject(with: Data(json.utf8), options: [.fragmentsAllowed, .json5Allowed]) as? [String: Any] {
+                return (obj, true)
+            }
+        }
+        return (nil, found)
     }
 
     public func detect(_ sample: String) -> DetectionScore? {

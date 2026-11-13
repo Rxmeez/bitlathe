@@ -37,6 +37,7 @@ final class AppModel {
 
     init() {
         ToolCatalog.registerAll(in: registry)
+        ScriptsManager.shared.start(registry: registry) // scripts:
         selectedToolID = registry.tool(settings.lastToolID)?.id ?? registry.tools.first?.id
         Task { await refreshUsage() }
         ClipboardMonitor.shared.start() // clipboard: begins polling only if the user opted in

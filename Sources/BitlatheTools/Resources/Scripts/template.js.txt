@@ -1,0 +1,18 @@
+/**
+ * @bitlathe {
+ *   "name": "My Script",
+ *   "description": "What this script does, in one line",
+ *   "icon": "wand.and.stars",
+ *   "keywords": ["example", "template"]
+ * }
+ */
+
+// Bitlathe runs main(input) in a fresh, sandboxed JavaScript context (no network, no file access, 2 second limit).
+//   input.text       the selection if there is one, otherwise the whole input; assign to it to set the output
+//   input.fullText   the whole input
+//   input.selection  the selected text ("" when nothing is selected)
+//   input.postInfo(message)   show a warning banner next to the result
+//   input.postError(message)  fail with an error message
+function main(input) {
+    input.text = input.text.toUpperCase();
+}

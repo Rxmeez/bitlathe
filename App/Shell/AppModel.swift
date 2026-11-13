@@ -21,6 +21,8 @@ final class AppModel {
         }
     }
     var searchText = ""
+    // pipelines: saved pipelines, registered as tools
+    let pipelines = PipelineLibrary()
     var favourites: [String] = []
     var frequent: [String] = []
     var recent: [String] = []
@@ -38,6 +40,7 @@ final class AppModel {
         selectedToolID = registry.tool(settings.lastToolID)?.id ?? registry.tools.first?.id
         Task { await refreshUsage() }
         ClipboardMonitor.shared.start() // clipboard: begins polling only if the user opted in
+        Task { await pipelines.bootstrap(model: self) } // pipelines:
         #if DEBUG
         // Screenshot harness: `open Bitlathe.app --args -BLTool json.format -BLSample 0`
         let defaults = UserDefaults.standard

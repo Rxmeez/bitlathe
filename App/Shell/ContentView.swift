@@ -53,6 +53,8 @@ struct ContentView: View {
         @Bindable var model = model
         if model.selectedToolID == ClipboardMonitor.sidebarID, model.settings.clipboardHistoryEnabled {
             ClipboardView() // clipboard: opt-in history destination
+        } else if let tool = model.selectedTool, tool.kind == .pipeline, let editor = model.pipelines.editor(forToolID: tool.id) { // pipelines:
+            PipelineEditorView(editor: editor).id(editor.pipelineID)
         } else if let session = model.currentSession {
             VStack(spacing: 0) {
                 if let report = model.detectionReport { DetectionBanner(report: report) }

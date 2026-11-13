@@ -24,7 +24,19 @@ struct SidebarView: View {
                         Section(category.title) { ForEach(tools) { ToolRow(tool: $0) } }
                     }
                 }
-                let extras = model.visibleTools.filter { $0.kind != .native }
+                // pipelines: saved pipelines + "New Pipeline"
+                Section("Pipelines") {
+                    ForEach(model.pipelines.pipelines) { p in
+                        if let tool = model.registry.tool(p.toolID) { ToolRow(tool: tool) }
+                    }
+                    Button { model.pipelines.create() } label: {
+                        Label { Text("New Pipeline") } icon: { Image(systemName: "plus").frame(width: Space.xl - Space.xs, alignment: .center) }
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("New Pipeline (⌥⌘N)")
+                }
+                let extras = model.visibleTools.filter { $0.kind == .script } // pipelines: pipelines have their own section
                 if !extras.isEmpty {
                     Section("Scripts & Pipelines") { ForEach(extras) { ToolRow(tool: $0) } }
                 }

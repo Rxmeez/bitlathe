@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bitlathe Smart Box</title>
+<style>
+:root {
+  --page: #e9edf5; --page-glow: #dfe6f6;
+  --win: #ffffff; --chrome: #f6f7fa; --hairline: rgba(15, 23, 42, .09); --hairline-strong: rgba(15, 23, 42, .16);
+  --text: #0f172a; --text-2: #475569; --text-3: #7a8699;
+  --surface: #f7f8fb; --surface-2: #eef1f6; --raised: #ffffff;
+  --accent: #2f6bff; --accent-2: #5b8cff; --accent-soft: rgba(47, 107, 255, .10); --accent-ink: #ffffff;
+  --success: #0f8a4a; --success-soft: rgba(15, 138, 74, .11);
+  --danger: #c2261d; --danger-soft: rgba(194, 38, 29, .10);
+  --warning: #a15c00; --warning-soft: rgba(161, 92, 0, .11);
+  --k: #8a2be2; --s: #0b7a3e; --d: #b35c00; --b: #2f6bff; --n: #8a94a6;
+  --shadow: 0 30px 80px -20px rgba(15, 23, 42, .28), 0 0 0 1px var(--hairline);
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #090b10; --page-glow: #111a33;
+    --win: #16181d; --chrome: #1c1f25; --hairline: rgba(255, 255, 255, .08); --hairline-strong: rgba(255, 255, 255, .14);
+    --text: #e8ecf3; --text-2: #a9b2c3; --text-3: #7d8799;
+    --surface: #1d2027; --surface-2: #23272f; --raised: #262a33;
+    --accent: #5b8cff; --accent-2: #7da4ff; --accent-soft: rgba(91, 140, 255, .16); --accent-ink: #0b1020;
+    --success: #4ad08a; --success-soft: rgba(74, 208, 138, .14);
+    --danger: #ff7b72; --danger-soft: rgba(255, 123, 114, .14);
+    --warning: #f2b45a; --warning-soft: rgba(242, 180, 90, .14);
+    --k: #c39bff; --s: #7ee2a8; --d: #f6b26b; --b: #7da4ff; --n: #8a94a6;
+    --shadow: 0 30px 90px -20px rgba(0, 0, 0, .7), 0 0 0 1px var(--hairline);
+  }
+}
+:root[data-theme="dark"] {
+  --page: #090b10; --page-glow: #111a33;
+  --win: #16181d; --chrome: #1c1f25; --hairline: rgba(255, 255, 255, .08); --hairline-strong: rgba(255, 255, 255, .14);
+  --text: #e8ecf3; --text-2: #a9b2c3; --text-3: #7d8799;
+  --surface: #1d2027; --surface-2: #23272f; --raised: #262a33;
+  --accent: #5b8cff; --accent-2: #7da4ff; --accent-soft: rgba(91, 140, 255, .16); --accent-ink: #0b1020;
+  --success: #4ad08a; --success-soft: rgba(74, 208, 138, .14);
+  --danger: #ff7b72; --danger-soft: rgba(255, 123, 114, .14);
+  --warning: #f2b45a; --warning-soft: rgba(242, 180, 90, .14);
+  --k: #c39bff; --s: #7ee2a8; --d: #f6b26b; --b: #7da4ff; --n: #8a94a6;
+  --shadow: 0 30px 90px -20px rgba(0, 0, 0, .7), 0 0 0 1px var(--hairline);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font: 14px/1.45 var(--sans); color: var(--text); background: var(--page);
+  background-image: radial-gradient(1200px 600px at 50% -10%, var(--page-glow), transparent 70%);
+  min-height: 100vh; padding: 28px 16px 64px; -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+.topbar { max-width: 1080px; margin: 0 auto 16px; display: flex; align-items: center; gap: 12px; }
+.topbar h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: -.01em; }
+.topbar .sub { color: var(--text-3); font-size: 13px; }
+.topbar .spacer { flex: 1; }
+.ghost { background: transparent; border: 1px solid var(--hairline-strong); border-radius: 8px; padding: 5px 10px; cursor: pointer; color: var(--text-2); font-size: 12.5px; }
+.ghost:hover { color: var(--text); border-color: var(--text-3); }
+
+/* window */
+.window { max-width: 1080px; margin: 0 auto; height: min(720px, 84vh); min-height: 520px; background: var(--win); border-radius: 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden; position: relative; }
+.titlebar { height: 44px; flex: none; display: flex; align-items: center; padding: 0 14px; gap: 8px; background: var(--chrome); border-bottom: 1px solid var(--hairline); }
+.lights { display: flex; gap: 8px; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+.lights i:nth-child(1) { background: #ff5f57; } .lights i:nth-child(2) { background: #febc2e; } .lights i:nth-child(3) { background: #28c840; }
+.titlebar .title { flex: 1; text-align: center; font-weight: 600; font-size: 13px; color: var(--text-2); }
+.tb-btn { border: 0; background: transparent; width: 30px; height: 26px; border-radius: 6px; display: grid; place-items: center; color: var(--text-3); cursor: pointer; }
+.tb-btn:hover { background: var(--surface-2); color: var(--text); }
+.tb-btn svg { width: 16px; height: 16px; }
+
+.body { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; }
+.input-wrap { position: relative; flex: 1 1 auto; min-height: 0; display: flex; transition: flex-basis .18s ease; }
+.has-input .input-wrap { flex: 0 0 auto; height: 96px; border-bottom: 1px solid var(--hairline); } /* JS sizes it to the content, up to 42% */
+textarea#box { flex: 1; resize: none; border: 0; outline: none; background: transparent; color: var(--text); font: 14px/1.6 var(--mono); padding: 22px 26px; tab-size: 2; }
+.fmt-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 650; padding: 2px 9px 2px 7px; border-radius: 999px; background: var(--surface-2); color: var(--text); }
+.fmt-pill .dot { width: 7px; height: 7px; border-radius: 50%; }
+.fmt-pill .conf { color: var(--text-3); font-weight: 500; }
+
+/* empty state */
+.empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; pointer-events: none; padding: 24px; }
+.has-input .empty { display: none; }
+.empty .glow { position: absolute; width: 520px; height: 300px; border-radius: 50%; background: radial-gradient(closest-side, var(--accent-soft), transparent); top: 50%; left: 50%; transform: translate(-50%, -62%); filter: blur(10px); }
+.empty h2 { position: relative; font-size: 30px; letter-spacing: -.02em; margin: 0; font-weight: 650; }
+.empty h2 em { font-style: normal; background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.empty p { position: relative; margin: -12px 0 0; color: var(--text-2); text-align: center; max-width: 560px; }
+.empty .row { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; pointer-events: auto; max-width: 760px; }
+.empty .label { position: relative; font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); font-weight: 600; margin-bottom: -12px; }
+.chip { border: 1px solid var(--hairline-strong); background: var(--raised); border-radius: 999px; padding: 6px 12px; font-size: 12.5px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; color: var(--text-2); }
+.chip:hover { color: var(--text); border-color: var(--accent); }
+.chip b { font-weight: 600; color: var(--text); }
+.recent { position: relative; pointer-events: auto; width: min(640px, 100%); border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface); overflow: hidden; }
+.recent button { all: unset; box-sizing: border-box; width: 100%; display: grid; grid-template-columns: 92px 1fr auto; gap: 12px; align-items: center; padding: 10px 14px; cursor: pointer; border-top: 1px solid var(--hairline); }
+.recent button:first-child { border-top: 0; }
+.recent button:hover { background: var(--surface-2); }
+.recent .fmt { font-size: 11.5px; font-weight: 600; color: var(--text-2); }
+.recent .pv { font: 12.5px var(--mono); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.recent .meta { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+.usual { position: relative; color: var(--text-3); font-size: 12.5px; text-align: center; }
+.usual b { color: var(--text-2); font-weight: 600; }
+
+/* suggestions */
+.suggest { display: none; flex: none; padding: 12px 18px 10px; border-bottom: 1px solid var(--hairline); background: linear-gradient(var(--surface), transparent); }
+.has-input .suggest { display: block; }
+.actions { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.actions::-webkit-scrollbar { display: none; }
+.act { flex: none; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--hairline-strong); background: var(--raised); border-radius: 10px; padding: 7px 10px 7px 12px; cursor: pointer; font-size: 13px; font-weight: 550; transition: transform .12s ease, border-color .12s ease, background .12s ease; }
+.act:hover { transform: translateY(-1px); border-color: var(--accent); }
+.act .kbd { font: 11px var(--sans); color: var(--text-3); border: 1px solid var(--hairline-strong); border-radius: 5px; padding: 0 5px; line-height: 17px; }
+.act.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); box-shadow: 0 6px 18px -8px var(--accent); }
+.act.on .kbd { color: var(--accent-ink); border-color: color-mix(in srgb, var(--accent-ink) 40%, transparent); }
+.act.learned::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--success); margin-left: -2px; }
+.why { margin-top: 8px; font-size: 12px; color: var(--text-3); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.why .tag { display: inline-flex; gap: 5px; align-items: center; padding: 1px 8px; border-radius: 999px; font-weight: 600; font-size: 11.5px; }
+.tag.sens { background: var(--warning-soft); color: var(--warning); }
+.tag.ai { background: var(--accent-soft); color: var(--accent); }
+
+/* result */
+.result { display: none; flex: 1; min-height: 0; overflow: auto; padding: 18px 22px 22px; }
+.has-input .result { display: block; }
+.res-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.res-head h3 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
+.res-head .meta { color: var(--text-3); font-size: 12.5px; }
+.res-head .spacer { flex: 1; }
+.btn { border: 1px solid var(--hairline-strong); background: var(--raised); border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 12.5px; font-weight: 550; display: inline-flex; gap: 6px; align-items: center; }
+.btn:hover { border-color: var(--text-3); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn .kbd { font-size: 11px; opacity: .7; }
+.opts { display: inline-flex; gap: 6px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--hairline-strong); border-radius: 7px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 3px 9px; font-size: 12px; cursor: pointer; color: var(--text-2); }
+.seg button.on { background: var(--surface-2); color: var(--text); font-weight: 600; }
+.toggle { font-size: 12px; color: var(--text-2); display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+pre.code { margin: 0; font: 13px/1.6 var(--mono); background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; padding: 14px 16px; overflow: auto; white-space: pre; }
+.k { color: var(--k); } .s { color: var(--s); } .d { color: var(--d); } .b { color: var(--b); } .n { color: var(--n); }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 0; border: 1px solid var(--hairline); border-radius: 10px; overflow: hidden; background: var(--surface); }
+.kv > div { padding: 8px 14px; border-top: 1px solid var(--hairline); }
+.kv > div:nth-child(-n+2) { border-top: 0; }
+.kv .l { color: var(--text-3); font-size: 12.5px; padding-right: 22px; }
+.kv .v { font: 13px var(--mono); word-break: break-all; display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.kv .v button { border: 0; background: transparent; color: var(--text-3); cursor: pointer; font-size: 12px; padding: 0 2px; flex: none; }
+.kv .v button:hover { color: var(--accent); }
+.status { display: inline-flex; gap: 6px; align-items: center; padding: 3px 10px; border-radius: 999px; font-weight: 650; font-size: 12px; }
+.status.ok { background: var(--success-soft); color: var(--success); }
+.status.bad { background: var(--danger-soft); color: var(--danger); }
+.status.warn { background: var(--warning-soft); color: var(--warning); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cap { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-3); font-weight: 650; margin: 14px 0 6px; }
+.cap:first-child { margin-top: 0; }
+.big { font-size: 22px; font-weight: 650; letter-spacing: -.01em; margin: 4px 0 2px; }
+.swatches { display: flex; gap: 0; border-radius: 10px; overflow: hidden; border: 1px solid var(--hairline); height: 56px; }
+.swatches div { flex: 1; display: grid; place-items: end start; padding: 6px 8px; font: 11px var(--mono); }
+.hero-swatch { height: 92px; border-radius: 12px; border: 1px solid var(--hairline); display: flex; align-items: flex-end; padding: 10px 12px; font: 600 13px var(--mono); }
+.trail { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.step { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 9px; background: var(--surface); border: 1px solid var(--hairline); font-size: 12.5px; font-weight: 600; }
+.step .n { font: 11px var(--sans); width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.step-sep { color: var(--text-3); }
+.plan { border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface); padding: 14px 16px; }
+.plan ol { margin: 8px 0 0; padding-left: 0; list-style: none; display: grid; gap: 8px; }
+.plan li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; }
+.plan li .n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 12px; }
+.plan li small { color: var(--text-3); display: block; }
+.note { color: var(--text-3); font-size: 12.5px; margin-top: 10px; }
+.fixlist { margin: 0 0 12px; padding: 0; list-style: none; display: grid; gap: 6px; }
+.fixlist li { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.fixlist li::before { content: "✓"; color: var(--success); font-weight: 700; }
+input.secret { font: 13px var(--mono); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--hairline-strong); background: var(--raised); color: var(--text); width: 220px; }
+.fade { animation: fade .16s ease; }
+@keyframes fade { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+
+/* footer */
+.foot { flex: none; height: 30px; border-top: 1px solid var(--hairline); background: var(--chrome); display: flex; align-items: center; gap: 14px; padding: 0 14px; font-size: 11.5px; color: var(--text-3); }
+.foot .spacer { flex: 1; }
+.foot .live { display: inline-flex; gap: 6px; align-items: center; }
+.foot .live i { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+.foot kbd { font: 11px var(--sans); border: 1px solid var(--hairline-strong); border-radius: 4px; padding: 0 4px; }
+
+/* palette */
+.overlay { position: absolute; inset: 44px 0 0; background: rgba(8, 10, 16, .28); display: none; align-items: flex-start; justify-content: center; padding-top: 70px; z-index: 5; }
+.overlay.open { display: flex; }
+.palette { width: min(560px, 92%); background: var(--raised); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+.palette input { width: 100%; border: 0; outline: none; padding: 14px 16px; font-size: 16px; background: transparent; color: var(--text); border-bottom: 1px solid var(--hairline); }
+.palette ul { list-style: none; margin: 0; padding: 6px; max-height: 320px; overflow: auto; }
+.palette li { padding: 8px 10px; border-radius: 8px; display: flex; justify-content: space-between; gap: 10px; cursor: pointer; font-size: 13.5px; }
+.palette li small { color: var(--text-3); }
+.palette li.sel { background: var(--accent-soft); }
+.toast { position: absolute; left: 50%; bottom: 46px; transform: translate(-50%, 12px); background: var(--text); color: var(--win); padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 550; opacity: 0; pointer-events: none; transition: opacity .16s ease, transform .16s ease; z-index: 6; white-space: nowrap; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* notes */
+.notes { max-width: 1080px; margin: 26px auto 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.card { background: var(--win); border-radius: 12px; padding: 16px 18px; box-shadow: 0 0 0 1px var(--hairline); }
+.card h4 { margin: 0 0 8px; font-size: 13.5px; }
+.card p, .card li { color: var(--text-2); font-size: 13px; margin: 0 0 8px; }
+.card ul { margin: 0; padding-left: 18px; }
+.card pre { margin: 8px 0 0; font: 12px/1.55 var(--mono); background: var(--surface); border: 1px solid var(--hairline); border-radius: 8px; padding: 10px 12px; overflow: auto; }
+.card table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.card td { padding: 4px 0; border-top: 1px solid var(--hairline); color: var(--text-2); }
+.card td:last-child { text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
+.hint { max-width: 1080px; margin: 12px auto 0; color: var(--text-3); font-size: 12px; text-align: center; }
+
+@media (max-width: 860px) {
+  .notes { grid-template-columns: 1fr; }
+  .grid2 { grid-template-columns: 1fr; }
+  .recent button { grid-template-columns: 70px 1fr; }
+  .recent .meta { display: none; }
+  .empty h2 { font-size: 24px; }
+  .topbar .sub { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>Bitlathe · Smart Box</h1>
+  <span class="sub">Prototype. One box: paste anything, it works out what you want.</span>
+  <span class="spacer"></span>
+  <button class="ghost" id="themeBtn" title="Switch light and dark">Theme</button>
+  <button class="ghost" id="notesBtn">Design notes</button>
+</div>
+
+<div class="window" id="win">
+  <div class="titlebar">
+    <div class="lights"><i></i><i></i><i></i></div>
+    <div class="title">Bitlathe</div>
+    <button class="tb-btn" id="histBtn" title="Recent (⌘Y)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg></button>
+    <button class="tb-btn" id="toolsBtn" title="All tools (⌘K)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1.2"/><rect x="9" y="2" width="5" height="5" rx="1.2"/><rect x="2" y="9" width="5" height="5" rx="1.2"/><rect x="9" y="9" width="5" height="5" rx="1.2"/></svg></button>
+  </div>
+
+  <div class="body" id="body">
+    <div class="input-wrap">
+      <textarea id="box" spellcheck="false" aria-label="Input" placeholder=""></textarea>
+      <div class="empty" id="empty">
+        <div class="glow"></div>
+        <h2>Paste <em>anything</em>.</h2>
+        <p>JSON, JWTs, timestamps, URLs, Base64, cron, colours, curl… Bitlathe works out what it is and what you usually do with it. Or just type what you want.</p>
+        <div class="label">Pick up where you left off</div>
+        <div class="recent" id="recent"></div>
+        <div class="usual" id="usual"></div>
+        <div class="label">Try</div>
+        <div class="row" id="samples"></div>
+      </div>
+    </div>
+    <div class="suggest" id="suggest">
+      <div class="actions" id="actions"></div>
+      <div class="why" id="why"></div>
+    </div>
+    <div class="result" id="result"></div>
+    <div class="foot">
+      <span id="stats">Ready</span>
+      <span class="spacer"></span>
+      <span class="live" title="Ranking learns from what you choose. Stored on this Mac only."><i></i>Learns on this Mac</span>
+      <span title="Other AI tools can call Bitlathe's tools through its MCP server">MCP on</span>
+      <span><kbd>⌘K</kbd> all tools</span>
+    </div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="palette">
+      <input id="pq" placeholder="Search 100 tools…" aria-label="Search tools">
+      <ul id="plist"></ul>
+    </div>
+  </div>
+</div>
+
+<div class="hint">Shortcuts: <b>⌘↩</b> copy result · <b>⇧⌘↩</b> replace the box with it · <b>⌥1–6</b> pick a suggestion (⌘1–6 in the app) · <b>Esc</b> clear · <b>⌘K</b> all tools. Add <code>#jwt</code>, <code>#json</code>, <code>#broken</code>, <code>#url</code>, <code>#base64</code>, <code>#cron</code>, <code>#color</code>, <code>#curl</code>, <code>#unix</code> or <code>#ask</code> to the address to open a sample.</div>
+
+<section class="notes" id="notes">
+  <div class="card">
+    <h4>How it chooses</h4>
+    <p>Each suggestion is scored by how sure detection is, what you picked for this kind of data before, and how recently. Pick an alternative and copy it a few times: it moves to the front and gets a green dot.</p>
+    <table id="memTable"></table>
+    <p style="margin-top:10px"><button class="ghost" id="resetMem">Reset what it learned</button></p>
+  </div>
+  <div class="card">
+    <h4>Exact, then smart</h4>
+    <ul>
+      <li>Every result comes from Bitlathe's deterministic tools: the same output every time, in milliseconds.</li>
+      <li>AI only steps in when you type words instead of data. It plans which tools to run; the tools still compute.</li>
+      <li>Anything that looks secret (tokens, keys, passwords) is marked and never sent to a model.</li>
+      <li>The full tool screens stay one click away for heavy work: diff, regex, CSV tables.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Same tools for agents (MCP)</h4>
+    <p>The <code>bl</code> CLI would serve Bitlathe's tools over the Model Context Protocol, so Claude Code and other agents get exact results instead of guessing.</p>
+<pre>claude mcp add bitlathe -- bl mcp</pre>
+<pre>{ "name": "detect",
+  "arguments": { "input": "eyJhbGciOi…" } }
+→ jwt.debug · 0.98
+
+{ "name": "run_tool",
+  "arguments": { "tool": "jwt.debug",
+                 "input": "eyJhbGciOi…" } }</pre>
+  </div>
+</section>
+
+<script>
+"use strict";
+// ---------- tiny utilities ----------
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const pad2 = (n) => String(n).padStart(2, "0");
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } },
+};
+function hl(json) {
+  return esc(json).replace(/("(?:\\.|[^"\\])*")(\s*:)?|\b(true|false)\b|\bnull\b|-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b/g,
+    (m, str, colon, bool) => {
+      if (str) return colon ? `<span class="k">${str}</span>${colon}` : `<span class="s">${str}</span>`;
+      if (bool) return `<span class="b">${m}</span>`;
+      if (m === "null") return `<span class="n">null</span>`;
+      return `<span class="d">${m}</span>`;
+    });
+}
+function code(text, json = false) { return `<pre class="code">${json ? hl(text) : esc(text)}</pre>`; }
+function kv(rows) {
+  return `<div class="kv">${rows.map(([l, v, raw]) => `<div class="l">${esc(l)}</div><div class="v"><span>${raw ? v : esc(v)}</span><button data-copy="${esc(raw ? "" : v)}" title="Copy">Copy</button></div>`).join("")}</div>`;
+}
+function b64urlDecode(s) {
+  s = s.replace(/-/g, "+").replace(/_/g, "/");
+  while (s.length % 4) s += "=";
+  const bin = atob(s);
+  try { return decodeURIComponent(escape(bin)); } catch { return bin; }
+}
+function b64url(str) { return btoa(unescape(encodeURIComponent(str))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+function bytesToB64url(bytes) { let s = ""; bytes.forEach((b) => (s += String.fromCharCode(b))); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+async function hmac256(secret, data) {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data)));
+}
+const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+function relative(date) {
+  const s = (date.getTime() - Date.now()) / 1000, a = Math.abs(s);
+  const [v, u] = a < 60 ? [s, "second"] : a < 3600 ? [s / 60, "minute"] : a < 86400 ? [s / 3600, "hour"] : a < 2592000 ? [s / 86400, "day"] : a < 31536000 ? [s / 2592000, "month"] : [s / 31536000, "year"];
+  return rtf.format(Math.round(v), u);
+}
+function sortKeys(v) {
+  if (Array.isArray(v)) return v.map(sortKeys);
+  if (v && typeof v === "object") return Object.keys(v).sort().reduce((o, k) => ((o[k] = sortKeys(v[k])), o), {});
+  return v;
+}
+function scalar(x) {
+  if (x === null) return "null";
+  if (typeof x === "string") return /^[A-Za-z_][\w .\/-]*$/.test(x) && !/^(true|false|null|yes|no)$/i.test(x) ? x : JSON.stringify(x);
+  return String(x);
+}
+function toYAML(v, ind = 0) {
+  const p = "  ".repeat(ind);
+  if (Array.isArray(v)) return v.length ? v.map((x) => (x && typeof x === "object" ? `${p}-\n${toYAML(x, ind + 1)}` : `${p}- ${scalar(x)}`)).join("\n") : `${p}[]`;
+  if (v && typeof v === "object") {
+    const ks = Object.keys(v);
+    if (!ks.length) return `${p}{}`;
+    return ks.map((k) => {
+      const x = v[k];
+      const nested = x && typeof x === "object" && (Array.isArray(x) ? x.length : Object.keys(x).length);
+      return nested ? `${p}${k}:\n${toYAML(x, ind + 1)}` : `${p}${k}: ${x && typeof x === "object" ? (Array.isArray(x) ? "[]" : "{}") : scalar(x)}`;
+    }).join("\n");
+  }
+  return p + scalar(v);
+}
+function depth(v) { return v && typeof v === "object" ? 1 + Math.max(0, ...Object.values(v).map(depth)) : 0; }
+function countKeys(v) { return v && typeof v === "object" ? (Array.isArray(v) ? 0 : Object.keys(v).length) + Object.values(v).reduce((a, x) => a + countKeys(x), 0) : 0; }
+function uuidv7() {
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  let ms = Date.now();
+  for (let i = 5; i >= 0; i--) { b[i] = ms % 256; ms = Math.floor(ms / 256); }
+  b[6] = (b[6] & 0x0f) | 0x70; b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+function password(n = 20) {
+  const cs = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*-_=+";
+  return [...crypto.getRandomValues(new Uint32Array(n))].map((x) => cs[x % cs.length]).join("");
+}
+function pyLiteral(v, ind = 0) {
+  const p = "    ".repeat(ind + 1), q = "    ".repeat(ind);
+  if (v === null) return "None";
+  if (v === true) return "True";
+  if (v === false) return "False";
+  if (typeof v === "string") return JSON.stringify(v);
+  if (typeof v === "number") return String(v);
+  if (Array.isArray(v)) return `[${v.map((x) => pyLiteral(x, ind)).join(", ")}]`;
+  const ks = Object.keys(v);
+  return `{\n${ks.map((k) => `${p}${JSON.stringify(k)}: ${pyLiteral(v[k], ind + 1)}`).join(",\n")},\n${q}}`;
+}
+
+// ---------- colour helpers ----------
+function hexToRgb(h) {
+  h = h.replace("#", "");
+  if (h.length === 3) h = [...h].map((c) => c + c).join("");
+  const n = parseInt(h.slice(0, 6), 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+function rgbToHsl({ r, g, b }) {
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+  let h = 0, s = 0;
+  if (mx !== mn) {
+    const d = mx - mn;
+    s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h *= 60;
+  }
+  return { h: Math.round(h), s: Math.round(s * 100), l: Math.round(l * 100) };
+}
+function lum({ r, g, b }) { const f = (c) => ((c /= 255) <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4); return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); }
+function contrast(a, b) { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); }
+function mix(c, w, t) { return { r: Math.round(c.r + (w.r - c.r) * t), g: Math.round(c.g + (w.g - c.g) * t), b: Math.round(c.b + (w.b - c.b) * t) }; }
+const rgbHex = ({ r, g, b }) => "#" + [r, g, b].map((x) => x.toString(16).padStart(2, "0")).join("").toUpperCase();
+
+// ---------- cron ----------
+function cronField(f, min, max) {
+  const set = new Set();
+  for (const part of f.split(",")) {
+    let [range, step] = part.split("/");
+    step = step ? parseInt(step, 10) : 1;
+    let lo, hi;
+    if (range === "*") { lo = min; hi = max; }
+    else if (range.includes("-")) { [lo, hi] = range.split("-").map(Number); }
+    else { lo = Number(range); hi = step > 1 ? max : lo; }
+    if ([lo, hi, step].some(Number.isNaN) || lo < min || hi > max || lo > hi || step < 1) return null;
+    for (let v = lo; v <= hi; v += step) set.add(v);
+  }
+  return set;
+}
+function parseCron(t) {
+  const f = t.trim().split(/\s+/);
+  if (f.length !== 5 || !f.every((x) => /^[\d*\/,-]+$/.test(x))) return null;
+  const sets = { min: cronField(f[0], 0, 59), hour: cronField(f[1], 0, 23), dom: cronField(f[2], 1, 31), mon: cronField(f[3], 1, 12), dow: cronField(f[4], 0, 7) };
+  if (Object.values(sets).some((s) => !s)) return null;
+  if (sets.dow.has(7)) { sets.dow.delete(7); sets.dow.add(0); }
+  return { f, sets };
+}
+function cronNext({ f, sets }, n = 5) {
+  const out = [], d = new Date();
+  d.setSeconds(0, 0); d.setMinutes(d.getMinutes() + 1);
+  const domR = f[2] !== "*", dowR = f[4] !== "*";
+  for (let guard = 0; guard < 200000 && out.length < n; guard++) {
+    const dayOK = sets.mon.has(d.getMonth() + 1) && (domR && dowR ? sets.dom.has(d.getDate()) || sets.dow.has(d.getDay()) : sets.dom.has(d.getDate()) && sets.dow.has(d.getDay()));
+    if (!dayOK) { d.setDate(d.getDate() + 1); d.setHours(0, 0, 0, 0); continue; }
+    if (!sets.hour.has(d.getHours())) { d.setHours(d.getHours() + 1, 0, 0, 0); continue; }
+    if (sets.min.has(d.getMinutes())) out.push(new Date(d));
+    d.setMinutes(d.getMinutes() + 1);
+  }
+  return out;
+}
+function describeCron(f) {
+  const [mi, ho, dom, mon, dow] = f;
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  let t;
+  if (mi === "*" && ho === "*") t = "Every minute";
+  else if (/^\*\/\d+$/.test(mi)) t = `Every ${mi.slice(2)} minutes`;
+  else if (/^\d+$/.test(mi) && /^\d+$/.test(ho)) t = `At ${pad2(ho)}:${pad2(mi)}`;
+  else if (/^\d+$/.test(mi)) t = ho === "*" ? `At minute ${mi} of every hour` : `At minute ${mi}`;
+  else t = `At minutes ${mi}`;
+  if (!(/^\d+$/.test(mi) && /^\d+$/.test(ho))) {
+    if (/^\d+-\d+$/.test(ho)) { const [a, b] = ho.split("-"); t += `, from ${pad2(a)}:00 to ${pad2(b)}:59`; }
+    else if (/^\*\/\d+$/.test(ho)) t += `, every ${ho.slice(2)} hours`;
+    else if (/^\d+$/.test(ho)) t += `, during ${pad2(ho)}:00–${pad2(ho)}:59`;
+    else if (ho !== "*") t += `, in hours ${ho}`;
+  }
+  if (dow !== "*") {
+    if (/^\d-\d$/.test(dow)) { const [a, b] = dow.split("-").map(Number); t += `, ${days[a % 7]} to ${days[b % 7]}`; }
+    else t += `, on ${dow.split(",").map((x) => days[Number(x) % 7] || x).join(", ")}`;
+  }
+  if (dom !== "*") t += `, on day ${dom} of the month`;
+  if (mon !== "*") t += `, in month ${mon}`;
+  return t;
+}
+
+// ---------- curl ----------
+function shellSplit(s) {
+  const out = []; let cur = "", q = null, bs = false, has = false;
+  for (const ch of s.replace(/\\\n/g, " ")) {
+    if (bs) { cur += ch; bs = false; continue; }
+    if (ch === "\\" && q !== "'") { bs = true; continue; }
+    if (q) { if (ch === q) q = null; else cur += ch; continue; }
+    if (ch === '"' || ch === "'") { q = ch; has = true; continue; }
+    if (/\s/.test(ch)) { if (cur || has) { out.push(cur); cur = ""; has = false; } continue; }
+    cur += ch;
+  }
+  if (cur || has) out.push(cur);
+  return out;
+}
+function parseCurl(s) {
+  const t = shellSplit(s); let method = null, url = null, data = null; const headers = [];
+  for (let i = 1; i < t.length; i++) {
+    const a = t[i];
+    if (a === "-X" || a === "--request") method = t[++i];
+    else if (a === "-H" || a === "--header") headers.push(t[++i]);
+    else if (["-d", "--data", "--data-raw", "--data-binary"].includes(a)) data = t[++i];
+    else if (["-u", "--user", "-A", "--user-agent", "-e", "-o"].includes(a)) i++;
+    else if (!a.startsWith("-") && !url) url = a;
+  }
+  return { method: (method || (data ? "POST" : "GET")).toUpperCase(), url, headers: headers.map((h) => { const i = h.indexOf(":"); return [h.slice(0, i).trim(), h.slice(i + 1).trim()]; }), data };
+}
+
+// ---------- samples ----------
+const SAMPLES = {};
+async function buildSamples() {
+  const now = Math.floor(Date.now() / 1000);
+  const header = b64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+  const payload = b64url(JSON.stringify({ sub: "user_42", name: "Ada Lovelace", role: "admin", iat: now - 1800, exp: now + 7200, iss: "https://auth.example.com" }));
+  let sig = "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+  try { sig = bytesToB64url(await hmac256("bitlathe", `${header}.${payload}`)); } catch { /* no WebCrypto: fake signature */ }
+  Object.assign(SAMPLES, {
+    jwt: { label: "JWT", text: `${header}.${payload}.${sig}` },
+    json: { label: "Messy JSON", text: '{"name":"Bitlathe","version":"1.0","tags":["mac","dev"],"nested":{"ok":true,"count":null},"builds":[{"id":1,"arch":"arm64"},{"id":2,"arch":"x86_64"}]}' },
+    broken: { label: "Broken JSON", text: "{name: 'Bitlathe', tags: ['mac', 'dev',], // comment\n ok: true,}" },
+    unix: { label: "Timestamp", text: String(now - 26 * 3600) },
+    url: { label: "URL", text: "https://shop.example.com/products/42?color=blue&size=m&utm_source=newsletter&utm_campaign=autumn&fbclid=IwAR2xQ" },
+    base64: { label: "Base64", text: btoa(JSON.stringify({ user: { id: 42, name: "Ada" }, scopes: ["read", "write"], active: true })) },
+    cron: { label: "Cron", text: "*/15 9-17 * * 1-5" },
+    color: { label: "Colour", text: "#3D7BFF" },
+    curl: { label: "curl", text: `curl -X POST https://api.example.com/v1/items -H 'Authorization: Bearer sk_live_8f2a91' -H 'Content-Type: application/json' -d '{"name":"widget","qty":2,"gift":false}'` },
+    uuid: { label: "UUID", text: uuidv7() },
+    cmd: { label: "Type: 3 uuid v7", text: "3 uuid v7" },
+    ask: { label: "Ask: jwt claims as yaml", text: "show the claims of a jwt as yaml" },
+  });
+}
+
+// ---------- memory (what you usually do) ----------
+const SEED_MEMORY = { JWT: { "jwt.decode": 12, "jwt.expiry": 3 }, JSON: { "json.format": 30, "json.minify": 4 }, Timestamp: { "unix.date": 7 }, URL: { "url.parse": 4 }, Base64: { "b64.json": 9 } };
+let memory = store.get("bl.proto.memory", SEED_MEMORY);
+let recent = store.get("bl.proto.recent", null);
+const LEARN = 4;
+
+// ---------- detectors and actions ----------
+const icon = { jwt: "●", json: "{ }", time: "◷", url: "↗", b64: "64", cron: "⟳", color: "◐", curl: "$", uuid: "#", text: "¶", gen: "✦", ai: "✧" };
+
+function jsonActions(data) {
+  return [
+    { id: "json.format", label: "Format", opts: "json", run: (o) => { const v = o.sort ? sortKeys(data) : data; const t = JSON.stringify(v, null, o.indent === "tab" ? "\t" : Number(o.indent)); return { title: "Formatted JSON", meta: `${countKeys(data)} keys · depth ${depth(data)}`, html: code(t, true), text: t }; } },
+    { id: "json.minify", label: "Minify", run: () => { const t = JSON.stringify(data); return { title: "Minified", meta: `${t.length} chars`, html: code(t, true), text: t }; } },
+    { id: "json.yaml", label: "To YAML", run: () => { const t = toYAML(data); return { title: "YAML", meta: "converted with the YAML ⇄ JSON tool", html: code(t), text: t }; } },
+    { id: "json.sort", label: "Sort keys", run: () => { const t = JSON.stringify(sortKeys(data), null, 2); return { title: "Keys sorted", meta: "recursively", html: code(t, true), text: t }; } },
+  ];
+}
+
+const DETECTORS = [
+  { // JWT
+    format: "JWT", dot: "#a855f7", conf: 0.98, sensitive: true,
+    test(t) {
+      if (!/^eyJ[\w-]+\.[\w-]+\.[\w-]*$/.test(t)) return null;
+      try { const [h, p, s] = t.split("."); return { h: JSON.parse(b64urlDecode(h)), p: JSON.parse(b64urlDecode(p)), s, raw: t }; } catch { return null; }
+    },
+    actions: (d) => {
+      const exp = d.p.exp ? new Date(d.p.exp * 1000) : null;
+      const expired = exp && exp < new Date();
+      const pill = exp ? `<span class="status ${expired ? "bad" : "ok"}">${expired ? "Expired" : "Valid"} · ${relative(exp)}</span>` : `<span class="status warn">No expiry</span>`;
+      const claim = (k, v) => (["exp", "iat", "nbf"].includes(k) && typeof v === "number" ? `${v}  ·  ${new Date(v * 1000).toLocaleString()}` : typeof v === "object" ? JSON.stringify(v) : String(v));
+      return [
+        { id: "jwt.decode", label: "Decode", run: () => {
+          const text = JSON.stringify({ header: d.h, payload: d.p }, null, 2);
+          return { title: "Decoded JWT", meta: `${d.h.alg} · ${Object.keys(d.p).length} claims`, badge: pill,
+            html: `<div class="cap">Claims</div>${kv(Object.entries(d.p).map(([k, v]) => [k, claim(k, v)]))}<div class="grid2" style="margin-top:12px"><div><div class="cap">Header</div>${code(JSON.stringify(d.h, null, 2), true)}</div><div><div class="cap">Payload</div>${code(JSON.stringify(d.p, null, 2), true)}</div></div>`, text };
+        } },
+        { id: "jwt.expiry", label: "Check expiry", run: () => ({ title: "Expiry", meta: d.p.iss || "", html: `<div class="big">${exp ? (expired ? "Expired " : "Expires ") + relative(exp) : "This token never expires"}</div><div class="note">${exp ? exp.toLocaleString() : "No exp claim"} · issued ${d.p.iat ? relative(new Date(d.p.iat * 1000)) : "at an unknown time"}</div><div style="margin-top:12px">${pill}</div>`, text: exp ? exp.toISOString() : "never" }) },
+        { id: "jwt.payload", label: "Payload as JSON", run: () => { const t = JSON.stringify(d.p, null, 2); return { title: "Payload", meta: "claims only", html: code(t, true), text: t }; } },
+        { id: "jwt.verify", label: "Verify signature", run: () => ({ title: "Verify signature", meta: `${d.h.alg}`, html: `<p>Enter the shared secret. It stays in this window. (The sample was signed with <code>bitlathe</code>.)</p><div style="display:flex;gap:8px;align-items:center"><input class="secret" id="secret" placeholder="Secret" autocomplete="off"><button class="btn primary" id="verifyBtn">Verify</button><span id="verifyOut"></span></div>`, text: "", after: () => {
+          $("#verifyBtn").onclick = async () => {
+            const [h, p] = d.raw.split(".");
+            try { const ok = bytesToB64url(await hmac256($("#secret").value, `${h}.${p}`)) === d.s; $("#verifyOut").innerHTML = ok ? '<span class="status ok">Signature valid</span>' : '<span class="status bad">Signature does not match</span>'; }
+            catch { $("#verifyOut").textContent = "WebCrypto is not available here."; }
+          };
+        } }) },
+      ];
+    },
+  },
+  { // URL
+    format: "URL", dot: "#0ea5e9", conf: 0.97,
+    test(t) { if (!/^https?:\/\/\S+$/.test(t)) return null; try { return new URL(t); } catch { return null; } },
+    actions: (u) => {
+      const tracking = [...u.searchParams.keys()].filter((k) => /^(utm_|fbclid|gclid|mc_eid|mc_cid|igshid|ref_?src)/i.test(k));
+      const clean = () => { const c = new URL(u.href); tracking.forEach((k) => c.searchParams.delete(k)); return c.href; };
+      const list = [
+        { id: "url.parse", label: "Parse", run: () => ({ title: "URL parts", meta: `${[...u.searchParams].length} query parameters`, html: kv([["Scheme", u.protocol.replace(":", "")], ["Host", u.host], ["Path", u.pathname], ...[...u.searchParams].map(([k, v]) => [`?${k}`, v])]), text: u.href }) },
+        { id: "url.decode", label: "Decode", run: () => { const t = decodeURIComponent(u.href); return { title: "Decoded", meta: "", html: code(t), text: t }; } },
+      ];
+      if (tracking.length) list.splice(1, 0, { id: "url.strip", label: "Remove tracking", run: () => { const t = clean(); return { title: "Without tracking", meta: `removed ${tracking.join(", ")}`, html: code(t), text: t }; } });
+      return list;
+    },
+  },
+  { // curl
+    format: "curl", dot: "#14b8a6", conf: 0.99,
+    test(t) { return /^curl\s/.test(t) ? parseCurl(t) : null; },
+    sensitiveIf: (c) => c.headers.some(([k, v]) => /authorization|api-key|token/i.test(k) || /bearer|sk_/i.test(v)),
+    actions: (c) => {
+      let body = null; try { body = c.data ? JSON.parse(c.data) : null; } catch { body = null; }
+      const hdrs = c.headers.filter(([k]) => !(body && /content-type/i.test(k)));
+      return [
+        { id: "curl.fetch", label: "To fetch", run: () => {
+          const h = c.headers.length ? `  headers: {\n${c.headers.map(([k, v]) => `    ${JSON.stringify(k)}: ${JSON.stringify(v)},`).join("\n")}\n  },\n` : "";
+          const b = c.data ? `  body: ${body ? `JSON.stringify(${JSON.stringify(body)})` : JSON.stringify(c.data)},\n` : "";
+          const t = `const response = await fetch(${JSON.stringify(c.url)}, {\n  method: ${JSON.stringify(c.method)},\n${h}${b}});\nconst data = await response.json();`;
+          return { title: "JavaScript (fetch)", meta: `${c.method} ${new URL(c.url).host}`, html: code(t), text: t };
+        } },
+        { id: "curl.python", label: "To Python", run: () => {
+          const h = hdrs.length ? `    headers={\n${hdrs.map(([k, v]) => `        ${JSON.stringify(k)}: ${JSON.stringify(v)},`).join("\n")}\n    },\n` : "";
+          const b = c.data ? (body ? `    json=${pyLiteral(body, 1)},\n` : `    data=${JSON.stringify(c.data)},\n`) : "";
+          const t = `import requests\n\nresponse = requests.${c.method.toLowerCase()}(\n    ${JSON.stringify(c.url)},\n${h}${b})\nresponse.raise_for_status()`;
+          return { title: "Python (requests)", meta: `${c.method} ${new URL(c.url).host}`, html: code(t), text: t };
+        } },
+        { id: "curl.explain", label: "Explain", run: () => ({ title: "What this request does", meta: "", html: kv([["Method", c.method], ["URL", c.url], ...c.headers.map(([k, v]) => [k, /authorization/i.test(k) ? v.replace(/(\S{4})\S+$/, "$1••••••") : v]), ["Body", c.data || "none"]]), text: "" }) },
+      ];
+    },
+  },
+  { // cron
+    format: "Cron", dot: "#f97316", conf: 0.92,
+    test(t) { return parseCron(t); },
+    actions: (c) => [
+      { id: "cron.explain", label: "Explain", run: () => {
+        const runs = cronNext(c, 5);
+        return { title: describeCron(c.f), meta: "standard 5-field cron, your time zone", html: `<div class="cap">Next runs</div>${kv(runs.map((d, i) => [i === 0 ? "Next" : `+${i}`, `${d.toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}  ·  ${relative(d)}`]))}`, text: describeCron(c.f) };
+      } },
+      { id: "cron.utc", label: "Next runs in UTC", run: () => { const runs = cronNext(c, 5); const t = runs.map((d) => d.toISOString()).join("\n"); return { title: "Next runs (UTC)", meta: "", html: code(t), text: t }; } },
+    ],
+  },
+  { // timestamp
+    format: "Timestamp", dot: "#22c55e", conf: 0.9,
+    test(t) { if (!/^\d{10}$|^\d{13}$/.test(t)) return null; const ms = t.length === 13 ? Number(t) : Number(t) * 1000; const d = new Date(ms); return d.getFullYear() > 1990 && d.getFullYear() < 2100 ? { d, unit: t.length === 13 ? "milliseconds" : "seconds", ms } : null; },
+    actions: (x) => [
+      { id: "unix.date", label: "To date", run: () => ({ title: x.d.toLocaleString(undefined, { dateStyle: "full", timeStyle: "short" }), meta: `Unix ${x.unit}`, badge: `<span class="status ok">${relative(x.d)}</span>`, html: kv([["ISO 8601 (UTC)", x.d.toISOString()], ["Local", x.d.toString().replace(/ \(.+\)$/, "")], ["Relative", relative(x.d)], ["Seconds", String(Math.floor(x.ms / 1000))], ["Milliseconds", String(x.ms)]]), text: x.d.toISOString() }) },
+      { id: "unix.relative", label: "Relative", run: () => ({ title: relative(x.d), meta: "", html: `<div class="big">${esc(relative(x.d))}</div>`, text: relative(x.d) }) },
+      { id: "unix.now", label: "Now", run: () => { const n = new Date(); return { title: "Current time", meta: "", html: kv([["Seconds", String(Math.floor(n / 1000))], ["ISO 8601", n.toISOString()]]), text: String(Math.floor(n / 1000)) }; } },
+    ],
+  },
+  { // UUID
+    format: "UUID", dot: "#64748b", conf: 0.99,
+    test(t) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t) ? t.toLowerCase() : null; },
+    actions: (u) => {
+      const v = parseInt(u[14], 16);
+      const rows = [["Version", `v${v}`], ["Variant", (parseInt(u[19], 16) & 0xc) === 0x8 ? "RFC 9562" : "other"]];
+      if (v === 7) rows.push(["Created", new Date(parseInt(u.replace(/-/g, "").slice(0, 12), 16)).toISOString()]);
+      return [
+        { id: "uuid.inspect", label: "Inspect", run: () => ({ title: `UUID v${v}`, meta: "", html: kv(rows), text: u }) },
+        { id: "uuid.new7", label: "New v7", run: () => { const t = uuidv7(); return { title: "New UUID v7", meta: "time-ordered", html: code(t), text: t }; } },
+        { id: "uuid.upper", label: "Uppercase", run: () => { const t = u.toUpperCase(); return { title: "Uppercase", meta: "", html: code(t), text: t }; } },
+      ];
+    },
+  },
+  { // colour
+    format: "Colour", dot: "#ec4899", conf: 0.95,
+    test(t) { return /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.test(t) && (t.startsWith("#") || /[a-f]/i.test(t)) ? hexToRgb(t) : null; },
+    actions: (c) => {
+      const hsl = rgbToHsl(c), white = { r: 255, g: 255, b: 255 }, black = { r: 0, g: 0, b: 0 };
+      const cw = contrast(c, white), cb = contrast(c, black), ink = cw >= cb ? "#fff" : "#000";
+      return [
+        { id: "color.convert", label: "Convert", run: () => ({ title: rgbHex(c), meta: `${cw >= 4.5 ? "AA" : cw >= 3 ? "AA large" : "fails AA"} with white text`, html: `<div class="hero-swatch" style="background:${rgbHex(c)};color:${ink}">${rgbHex(c)}</div><div style="margin-top:12px">${kv([["HEX", rgbHex(c)], ["RGB", `rgb(${c.r} ${c.g} ${c.b})`], ["HSL", `hsl(${hsl.h} ${hsl.s}% ${hsl.l}%)`], ["On white", `${cw.toFixed(2)} : 1`], ["On black", `${cb.toFixed(2)} : 1`]])}</div>`, text: `rgb(${c.r} ${c.g} ${c.b})` }) },
+        { id: "color.shades", label: "Shades", run: () => {
+          const steps = [0.85, 0.65, 0.4, 0.2, 0, -0.2, -0.4, -0.6].map((t) => (t >= 0 ? mix(c, white, t) : mix(c, black, -t)));
+          return { title: "Tints and shades", meta: "", html: `<div class="swatches">${steps.map((s) => `<div style="background:${rgbHex(s)};color:${contrast(s, white) > 3 ? "#fff" : "#000"}">${rgbHex(s)}</div>`).join("")}</div>`, text: steps.map(rgbHex).join("\n") };
+        } },
+      ];
+    },
+  },
+  { // valid JSON
+    format: "JSON", dot: "#2f6bff", conf: 0.99,
+    test(t) { if (!/^[\[{]/.test(t)) return null; try { return { v: JSON.parse(t) }; } catch { return null; } },
+    actions: (x) => jsonActions(x.v),
+  },
+  { // broken JSON
+    format: "JSON (invalid)", key: "JSON", dot: "#ef4444", conf: 0.8,
+    test(t) { if (!/^[\[{]/.test(t)) return null; try { JSON.parse(t); return null; } catch (e) { return { err: e.message, t }; } },
+    actions: (x) => {
+      const fixes = [];
+      let s = x.t;
+      const c1 = (s.match(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g) || []).length; if (c1) { s = s.replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, ""); fixes.push(`Removed ${c1} comment${c1 > 1 ? "s" : ""}`); }
+      const c2 = (s.match(/'([^'\\]*(?:\\.[^'\\]*)*)'/g) || []).length; if (c2) { s = s.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (m, inner) => JSON.stringify(inner)); fixes.push(`Changed ${c2} single-quoted string${c2 > 1 ? "s" : ""} to double quotes`); }
+      const c3 = (s.match(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g) || []).length; if (c3) { s = s.replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":'); fixes.push(`Quoted ${c3} key${c3 > 1 ? "s" : ""}`); }
+      const c4 = (s.match(/,\s*([}\]])/g) || []).length; if (c4) { s = s.replace(/,\s*([}\]])/g, "$1"); fixes.push(`Removed ${c4} trailing comma${c4 > 1 ? "s" : ""}`); }
+      let fixed = null; try { fixed = JSON.parse(s); } catch { fixed = null; }
+      const list = [];
+      if (fixed) list.push({ id: "json.fix", label: "Fix", run: () => { const t = JSON.stringify(fixed, null, 2); return { title: "Fixed JSON", meta: `${fixes.length} kinds of problem`, badge: '<span class="status ok">Now valid</span>', html: `<ul class="fixlist">${fixes.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>${code(t, true)}`, text: t }; } });
+      list.push({ id: "json.error", label: "Show error", run: () => ({ title: "Not valid JSON", meta: "", badge: '<span class="status bad">Invalid</span>', html: `<p>${esc(x.err)}</p>${code(x.t)}`, text: x.err }) });
+      return list;
+    },
+  },
+  { // Base64
+    format: "Base64", dot: "#eab308", conf: 0.85,
+    test(t) {
+      const s = t.replace(/\s+/g, "");
+      if (s.length < 8 || s.length % 4 || !/^[A-Za-z0-9+/]+={0,2}$/.test(s)) return null;
+      let dec; try { dec = decodeURIComponent(escape(atob(s))); } catch { return null; }
+      const printable = [...dec].filter((ch) => ch >= " " || "\n\r\t".includes(ch)).length / Math.max(dec.length, 1);
+      if (printable < 0.95) return null;
+      let json = null; try { json = /^[\[{]/.test(dec.trim()) ? JSON.parse(dec) : null; } catch { json = null; }
+      return { dec, json };
+    },
+    actions: (x) => {
+      const list = [];
+      if (x.json) list.push({ id: "b64.json", label: "Decode, then format JSON", chain: ["Base64 decode", "JSON Formatter"], run: () => { const t = JSON.stringify(x.json, null, 2); return { title: "Decoded JSON", meta: `${countKeys(x.json)} keys`, html: code(t, true), text: t }; } });
+      list.push({ id: "b64.decode", label: "Decode", run: () => ({ title: "Decoded text", meta: `${x.dec.length} chars`, html: code(x.dec), text: x.dec }) });
+      list.push({ id: "b64.hex", label: "As hex", run: () => { const t = [...atob(document.getElementById("box").value.replace(/\s+/g, ""))].map((ch) => ch.charCodeAt(0).toString(16).padStart(2, "0")).join(" "); return { title: "Bytes", meta: "", html: code(t), text: t }; } });
+      return list;
+    },
+  },
+  { // typed commands for generators
+    format: "Command", dot: "#8b5cf6", conf: 0.9,
+    test(t) {
+      const s = t.trim().toLowerCase();
+      let m = s.match(/^(\d{1,2})?\s*(uuid|guid)s?\s*(v?[47])?$/);
+      if (m) return { kind: "uuid", n: Number(m[1] || 1), v: (m[3] || "4").replace("v", "") };
+      if (/^(password|pwd|secret)s?$/.test(s)) return { kind: "password" };
+      if (/^(now|time|timestamp|date)$/.test(s)) return { kind: "now" };
+      if (/^lorem( ipsum)?$/.test(s)) return { kind: "lorem" };
+      return null;
+    },
+    actions: (c) => {
+      if (c.kind === "uuid") {
+        const make = (v) => Array.from({ length: c.n }, () => (v === "7" ? uuidv7() : crypto.randomUUID()));
+        return [
+          { id: `gen.uuid${c.v}`, label: `${c.n} × UUID v${c.v}`, run: () => { const t = make(c.v).join("\n"); return { title: `UUID v${c.v}`, meta: c.v === "7" ? "time-ordered" : "random", html: code(t), text: t }; } },
+          { id: `gen.uuid${c.v === "7" ? "4" : "7"}`, label: `v${c.v === "7" ? "4" : "7"} instead`, run: () => { const v = c.v === "7" ? "4" : "7"; const t = make(v).join("\n"); return { title: `UUID v${v}`, meta: "", html: code(t), text: t }; } },
+        ];
+      }
+      if (c.kind === "password") return [{ id: "gen.password", label: "Generate", run: () => { const t = password(); return { title: "Password", meta: "20 characters · ~126 bits", html: code(t), text: t }; } }];
+      if (c.kind === "now") return [{ id: "gen.now", label: "Current time", run: () => { const n = new Date(); return { title: n.toLocaleString(), meta: "", html: kv([["Unix seconds", String(Math.floor(n / 1000))], ["Milliseconds", String(n.getTime())], ["ISO 8601", n.toISOString()]]), text: String(Math.floor(n / 1000)) }; } }];
+      const lorem = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
+      return [{ id: "gen.lorem", label: "Paragraph", run: () => ({ title: "Lorem ipsum", meta: "", html: code(lorem), text: lorem }) }];
+    },
+  },
+  { // a sentence: ask mode (AI plans, tools compute)
+    format: "Ask", dot: "#2f6bff", conf: 0.7, ai: true,
+    test(t) { const s = t.trim(); return s.split(/\s+/).length >= 3 && /[a-z]/i.test(s) && !/[{}<>]/.test(s) && s.length < 240 && !s.includes("\n") ? s : null; },
+    actions: (s) => {
+      const q = s.toLowerCase(), steps = [];
+      if (/jwt|token/.test(q)) steps.push(["JWT Debugger", "decode the token and read its claims"]);
+      if (/base ?64/.test(q)) steps.push(["Base64", "decode"]);
+      if (/gzip|compress/.test(q)) steps.push(["Compress / Decompress", "gunzip"]);
+      if (/json|claims|payload/.test(q) && !steps.some((x) => /JSON/.test(x[0]))) steps.push(["JSON Formatter", "pretty-print the result"]);
+      if (/yaml/.test(q)) steps.push(["YAML ⇄ JSON", "convert to YAML"]);
+      if (/csv/.test(q)) steps.push(["JSON ⇄ CSV", "flatten to a table"]);
+      if (/hash|sha/.test(q)) steps.push(["Hash Generator", "SHA-256"]);
+      if (/uuid/.test(q)) steps.push(["UUID Generator", "generate"]);
+      if (!steps.length) steps.push(["Detect", "look at your data first"], ["Best tool", "chosen by the model from 100 tools"]);
+      return [
+        { id: "ask.plan", label: "Plan with AI", run: () => ({ title: "Plan", meta: "", badge: '<span class="tag ai" style="padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600">On-device model · simulated here</span>',
+          html: `<div class="plan"><strong>${esc(s)}</strong><ol>${steps.map(([tool, why], i) => `<li><span class="n">${i + 1}</span><div>${esc(tool)}<small>${esc(why)}</small></div></li>`).join("")}</ol></div>
+                 <p class="note">The model only chooses and orders tools; each step runs Bitlathe's exact engine. In the app, paste your data and type the request on the line below it: the plan then runs on that data at once. Save it as a pipeline to reuse it.</p>`, text: steps.map((x) => x[0]).join(" | ") }) },
+        { id: "ask.pipeline", label: "Save as pipeline", run: () => ({ title: "Pipeline", meta: "", html: code(`bl pipe "${steps.map((x) => x[0].toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.|\.$/g, "")).join(" | ")}"`), text: "" }) },
+      ];
+    },
+  },
+  { // anything else: text
+    format: "Text", dot: "#94a3b8", conf: 0.5,
+    test(t) { return t.length ? t : null; },
+    actions: (t) => {
+      const words = (t.match(/\S+/g) || []).length, lines = t.split("\n").length;
+      const camel = t.replace(/[-_\s]+(.)?/g, (m, c) => (c ? c.toUpperCase() : "")).replace(/^./, (c) => c.toLowerCase());
+      const snake = t.replace(/([a-z0-9])([A-Z])/g, "$1_$2").replace(/[-\s]+/g, "_").toLowerCase();
+      return [
+        { id: "text.count", label: "Count", run: () => ({ title: `${words} words`, meta: "", html: kv([["Characters", String(t.length)], ["Words", String(words)], ["Lines", String(lines)], ["Bytes (UTF-8)", String(new TextEncoder().encode(t).length)]]), text: `${words} words` }) },
+        { id: "text.case", label: "Change case", run: () => ({ title: "Case", meta: "", html: kv([["camelCase", camel], ["snake_case", snake], ["kebab-case", snake.replace(/_/g, "-")], ["UPPER", t.toUpperCase()]]), text: camel }) },
+        { id: "text.sha", label: "SHA-256", run: () => ({ title: "SHA-256", meta: "", html: '<pre class="code" id="shaOut">…</pre>', text: "", after: async () => { try { const h = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t))); const hex = [...h].map((b) => b.toString(16).padStart(2, "0")).join(""); $("#shaOut").textContent = hex; current.text = hex; } catch { $("#shaOut").textContent = "WebCrypto is not available here."; } } }) },
+        { id: "text.url", label: "URL-encode", run: () => { const x = encodeURIComponent(t); return { title: "URL-encoded", meta: "", html: code(x), text: x }; } },
+      ];
+    },
+  },
+];
+
+// ---------- state + rendering ----------
+const state = { det: null, data: null, actions: [], idx: 0, opts: { indent: "2", sort: false } };
+let current = { text: "" };
+const box = $("#box"), body = $("#body");
+
+function memKey() { return state.det ? state.det.key || state.det.format : ""; }
+function rank(det, actions) {
+  const mem = memory[det.key || det.format] || {};
+  return actions
+    .map((a, i) => ({ a, score: 100 - i * 10 + Math.min(mem[a.id] || 0, 40) * 6 }))
+    .sort((x, y) => y.score - x.score)
+    .map((x) => x.a);
+}
+function detect(text) {
+  const t = text.trim();
+  for (const d of DETECTORS) { const data = d.test(t); if (data) return { det: d, data }; }
+  return null;
+}
+function analyse() {
+  const text = box.value;
+  body.classList.toggle("has-input", text.trim().length > 0);
+  fitInput();
+  if (!text.trim()) { state.det = null; renderEmpty(); $("#stats").textContent = "Ready"; return; }
+  const found = detect(text);
+  const changed = !state.det || state.det !== found.det;
+  state.det = found.det; state.data = found.data;
+  state.actions = rank(found.det, found.det.actions(found.data));
+  if (changed) state.idx = 0;
+  state.idx = Math.min(state.idx, state.actions.length - 1);
+  const bytes = new TextEncoder().encode(text).length;
+  $("#stats").textContent = `${found.det.format} · ${bytes.toLocaleString()} B · ${text.split("\n").length} line${text.split("\n").length > 1 ? "s" : ""}`;
+  renderActions(); renderResult();
+}
+// The box grows with what you paste (one line stays compact) and stops at 42% so the result keeps the room.
+function fitInput() {
+  const wrap = $(".input-wrap");
+  if (!body.classList.contains("has-input")) { wrap.style.height = ""; return; }
+  wrap.style.height = "96px";
+  wrap.style.height = Math.min(Math.max(box.scrollHeight, 96), Math.round(body.clientHeight * 0.42)) + "px";
+}
+addEventListener("resize", fitInput);
+
+function renderActions() {
+  const mem = memory[memKey()] || {};
+  const top = Object.entries(mem).sort((a, b) => b[1] - a[1])[0];
+  $("#actions").innerHTML = state.actions.map((a, i) => `<button class="act ${i === state.idx ? "on" : ""} ${(mem[a.id] || 0) >= LEARN && top && top[0] === a.id && i !== 0 ? "learned" : ""}" data-i="${i}" title="${esc(a.label)}">${a.chain ? a.chain.map(esc).join(" → ") : esc(a.label)}<span class="kbd">${i === state.idx ? "⌘↩" : `⌘${i + 1}`}</span></button>`).join("");
+  const a = state.actions[state.idx], n = mem[a.id] || 0, det = state.det;
+  const sensitive = det.sensitive || (det.sensitiveIf && det.sensitiveIf(state.data));
+  const what = det.ai ? "A request, not data" : "Detected";
+  const reason = det.ai ? "AI plans which tools to run" : n > 0 ? `You chose “${a.label}” ${n}× for ${det.format}` : state.idx === 0 ? `Most useful first step for ${det.format}` : "Your pick";
+  const pill = `<span class="fmt-pill"><span class="dot" style="background:${det.dot}"></span>${esc(det.format)}<span class="conf">${Math.round(det.conf * 100)}%</span></span>`;
+  $("#why").innerHTML = `${det.ai ? "" : `<span>${esc(what)}</span>${pill}<span>·</span>`}<span>${esc(reason)}</span>${sensitive ? '<span class="tag sens">Contains a secret · never sent to AI</span>' : ""}${det.ai ? '<span class="tag ai">✧ AI</span>' : ""}`;
+}
+function renderResult() {
+  const a = state.actions[state.idx];
+  const r = a.run(state.opts);
+  current = r;
+  const optsHtml = a.opts === "json" ? `<span class="opts"><span class="seg">${["2", "4", "tab"].map((v) => `<button data-indent="${v}" class="${state.opts.indent === v ? "on" : ""}">${v === "tab" ? "Tab" : v}</button>`).join("")}</span><label class="toggle"><input type="checkbox" id="sortChk" ${state.opts.sort ? "checked" : ""}> Sort keys</label></span>` : "";
+  const trail = a.chain ? `<div class="trail">${a.chain.map((c, i) => `<span class="step"><span class="n">${i + 1}</span>${esc(c)}</span>`).join('<span class="step-sep">→</span>')}</div>` : "";
+  $("#result").innerHTML = `<div class="fade"><div class="res-head"><h3>${esc(r.title)}</h3>${r.badge || ""}<span class="meta">${esc(r.meta || "")}</span><span class="spacer"></span>${optsHtml}
+    ${state.det.ai ? "" : `<button class="btn" id="openFull" title="Open the full tool screen (⌥↩)">Open tool</button>
+    <button class="btn" id="replaceBtn" title="Replace the box with this (⇧⌘↩)" ${r.text ? "" : "disabled"}>Replace</button>
+    <button class="btn primary" id="copyBtn" ${r.text ? "" : "disabled"}>Copy <span class="kbd">⌘↩</span></button>`}</div>${trail}${r.html}</div>`;
+  if (r.after) r.after();
+}
+
+function renderEmpty() {
+  const items = recent || [];
+  $("#recent").innerHTML = items.slice(0, 4).map((r, i) => `<button data-r="${i}"><span class="fmt">${esc(r.fmt)}</span><span class="pv">${esc(r.preview)}</span><span class="meta">${esc(r.action)} · ${esc(r.when)}</span></button>`).join("") || `<button disabled><span class="fmt">Nothing yet</span><span class="pv">Your recent inputs appear here</span></button>`;
+  const usual = Object.entries(memory).map(([fmt, acts]) => { const top = Object.entries(acts).sort((a, b) => b[1] - a[1])[0]; return top ? [fmt, top[0], top[1]] : null; }).filter(Boolean).sort((a, b) => b[2] - a[2]).slice(0, 3);
+  const name = (fmt, id) => { const d = DETECTORS.find((x) => (x.key || x.format) === fmt); return labelFor(id) || id; };
+  $("#usual").innerHTML = usual.length ? `Your usual: ${usual.map(([f, id]) => `<b>${esc(f)}</b> ${esc(name(f, id))}`).join(" · ")}` : "";
+}
+const LABELS = { "jwt.decode": "decode", "jwt.expiry": "check expiry", "jwt.payload": "payload", "json.format": "format", "json.minify": "minify", "json.yaml": "to YAML", "json.sort": "sort keys", "unix.date": "to date", "url.parse": "parse", "url.strip": "remove tracking", "b64.json": "decode + format", "b64.decode": "decode", "cron.explain": "explain", "color.convert": "convert", "curl.fetch": "to fetch", "curl.python": "to Python" };
+const labelFor = (id) => LABELS[id];
+
+function learn() {
+  const k = memKey(), a = state.actions[state.idx];
+  if (!k || !a || state.det.ai) return;
+  memory[k] = memory[k] || {};
+  const before = Object.entries(memory[k]).sort((x, y) => y[1] - x[1])[0];
+  memory[k][a.id] = (memory[k][a.id] || 0) + 1;
+  const after = Object.entries(memory[k]).sort((x, y) => y[1] - x[1])[0];
+  store.set("bl.proto.memory", memory);
+  const preview = box.value.trim().replace(/\s+/g, " ").slice(0, 60);
+  recent = [{ fmt: state.det.format, preview, action: a.label, when: "just now", input: box.value }, ...(recent || []).filter((r) => r.preview !== preview)].slice(0, 6);
+  store.set("bl.proto.recent", recent);
+  renderMemory();
+  if (before && after && before[0] !== after[0]) toast(`Learned: for ${k} you prefer “${a.label}”`);
+}
+async function copyResult() {
+  if (!current.text) return;
+  try { await navigator.clipboard.writeText(current.text); }
+  catch { const t = document.createElement("textarea"); t.value = current.text; document.body.appendChild(t); t.select(); try { document.execCommand("copy"); } catch { /* ignore */ } t.remove(); }
+  learn(); toast("Copied");
+}
+function replaceBox() { if (!current.text) return; learn(); box.value = current.text; state.idx = 0; analyse(); toast("Replaced. ⌘Z to undo in the app"); }
+let toastTimer;
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 1600); }
+function choose(i) { if (i >= 0 && i < state.actions.length) { state.idx = i; renderActions(); renderResult(); } }
+function setInput(text) { box.value = text; state.det = null; analyse(); box.focus(); box.setSelectionRange(0, 0); box.scrollTop = 0; }
+
+function renderMemory() {
+  const rows = Object.entries(memory).flatMap(([fmt, acts]) => Object.entries(acts).map(([id, n]) => [fmt, labelFor(id) || id, n])).sort((a, b) => b[2] - a[2]).slice(0, 7);
+  $("#memTable").innerHTML = rows.map(([f, a, n]) => `<tr><td>${esc(f)} → ${esc(a)}</td><td>${n}×</td></tr>`).join("") || "<tr><td>Nothing learned yet</td><td></td></tr>";
+}
+
+// ---------- palette ----------
+const TOOLS = ["JSON Formatter", "JWT Debugger", "Unix Time Converter", "URL Parser", "Base64 String", "Cron Parser", "Colour Converter", "cURL → Code", "UUID / ULID Generator", "Hash Generator", "RegExp Tester", "Text Diff", "YAML ⇄ JSON", "JSON ⇄ CSV", "CSV Viewer", "Markdown Preview", "SQL Formatter", "QR Code", "Password Generator", "Number Base Converter", "Certificate Inspector", "HTML Formatter", "Lorem Ipsum", "Case Converter"];
+let pSel = 0;
+function openPalette() { $("#overlay").classList.add("open"); $("#pq").value = ""; pSel = 0; renderPalette(); $("#pq").focus(); }
+function closePalette() { $("#overlay").classList.remove("open"); box.focus(); }
+function renderPalette() {
+  const q = $("#pq").value.toLowerCase();
+  const list = TOOLS.filter((t) => t.toLowerCase().includes(q));
+  pSel = Math.min(pSel, Math.max(list.length - 1, 0));
+  $("#plist").innerHTML = list.map((t, i) => `<li class="${i === pSel ? "sel" : ""}" data-t="${esc(t)}">${esc(t)}<small>full tool</small></li>`).join("") || "<li>No tools match</li>";
+}
+
+// ---------- events ----------
+box.addEventListener("input", analyse);
+$("#actions").addEventListener("click", (e) => { const b = e.target.closest(".act"); if (b) choose(Number(b.dataset.i)); });
+$("#result").addEventListener("click", (e) => {
+  if (e.target.closest("#copyBtn")) copyResult();
+  else if (e.target.closest("#replaceBtn")) replaceBox();
+  else if (e.target.closest("#openFull")) toast("Opens the full tool screen with this input");
+  else if (e.target.dataset.indent) { state.opts.indent = e.target.dataset.indent; renderResult(); }
+  else if (e.target.dataset.copy !== undefined) { const v = e.target.dataset.copy; if (v) { navigator.clipboard?.writeText(v).catch(() => {}); toast("Copied"); } }
+});
+$("#result").addEventListener("change", (e) => { if (e.target.id === "sortChk") { state.opts.sort = e.target.checked; renderResult(); } });
+$("#recent").addEventListener("click", (e) => { const b = e.target.closest("button[data-r]"); if (b) setInput(recent[Number(b.dataset.r)].input); });
+$("#samples").addEventListener("click", (e) => { const b = e.target.closest(".chip"); if (b) setInput(SAMPLES[b.dataset.s].text); });
+$("#toolsBtn").onclick = openPalette;
+$("#histBtn").onclick = () => { setInput(""); toast("Recent inputs are on the empty screen"); };
+$("#overlay").addEventListener("click", (e) => { if (e.target.id === "overlay") closePalette(); const li = e.target.closest("li[data-t]"); if (li) { closePalette(); toast(`Opens ${li.dataset.t}`); } });
+$("#pq").addEventListener("input", () => { pSel = 0; renderPalette(); });
+$("#pq").addEventListener("keydown", (e) => {
+  const n = $("#plist").children.length;
+  if (e.key === "ArrowDown") { pSel = (pSel + 1) % n; renderPalette(); e.preventDefault(); }
+  else if (e.key === "ArrowUp") { pSel = (pSel - 1 + n) % n; renderPalette(); e.preventDefault(); }
+  else if (e.key === "Enter") { const li = $("#plist").children[pSel]; closePalette(); if (li?.dataset.t) toast(`Opens ${li.dataset.t}`); }
+  else if (e.key === "Escape") closePalette();
+});
+document.addEventListener("keydown", (e) => {
+  if ($("#overlay").classList.contains("open")) return;
+  const mod = e.metaKey || e.ctrlKey;
+  if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); openPalette(); return; }
+  if (mod && e.key === "Enter") { e.preventDefault(); e.shiftKey ? replaceBox() : copyResult(); return; }
+  if ((mod || e.altKey) && /^Digit[1-6]$/.test(e.code)) { e.preventDefault(); choose(Number(e.code.slice(5)) - 1); return; }
+  if (e.key === "Escape" && box.value) { setInput(""); return; }
+});
+document.addEventListener("paste", (e) => { if (document.activeElement !== box && !$("#overlay").classList.contains("open")) { const t = e.clipboardData?.getData("text"); if (t) { e.preventDefault(); setInput(t); } } });
+$("#resetMem").onclick = () => { memory = {}; store.set("bl.proto.memory", memory); renderMemory(); if (state.det) analyse(); else renderEmpty(); toast("Forgot everything it learned"); };
+$("#notesBtn").onclick = () => { const n = $("#notes"); n.style.display = n.style.display === "none" ? "" : "none"; };
+$("#themeBtn").onclick = () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = dark ? "light" : "dark";
+};
+
+// ---------- start ----------
+(async function start() {
+  await buildSamples();
+  if (!recent) {
+    recent = [
+      { fmt: "JWT", preview: SAMPLES.jwt.text.slice(0, 48) + "…", action: "Decoded", when: "2 min ago", input: SAMPLES.jwt.text },
+      { fmt: "JSON", preview: SAMPLES.json.text.slice(0, 56) + "…", action: "Formatted", when: "1 h ago", input: SAMPLES.json.text },
+      { fmt: "Timestamp", preview: SAMPLES.unix.text, action: "To date", when: "yesterday", input: SAMPLES.unix.text },
+    ];
+  }
+  $("#samples").innerHTML = Object.entries(SAMPLES).map(([k, s]) => `<button class="chip" data-s="${k}">${k === "ask" || k === "cmd" ? `<b>${esc(s.label.split(":")[0])}:</b>${esc(s.label.split(":")[1])}` : esc(s.label)}</button>`).join("");
+  renderMemory();
+  const hash = location.hash.slice(1);
+  if (SAMPLES[hash]) setInput(SAMPLES[hash].text); else { renderEmpty(); box.focus(); }
+  const q = location.search.slice(1);
+  if (/(^|&)dark/.test(q)) document.documentElement.dataset.theme = "dark";
+  if (/(^|&)light/.test(q)) document.documentElement.dataset.theme = "light";
+})();
+</script>
+</body>
+</html>

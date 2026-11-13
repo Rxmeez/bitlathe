@@ -12,7 +12,7 @@ struct SettingsView: View {
             AppearanceSettings().frame(width: 580, height: 260).tabItem { Label("Appearance", systemImage: "paintbrush") }
             EditorSettings().frame(width: 580, height: 380).tabItem { Label("Editor", systemImage: "text.cursor") }
             DetectionSettings().frame(width: 580, height: 520).tabItem { Label("Detection", systemImage: "wand.and.stars") }
-            HistorySettings().frame(width: 580, height: 560).tabItem { Label("History & Privacy", systemImage: "clock.arrow.circlepath") }
+            HistorySettings().frame(width: 580, height: 640).tabItem { Label("History & Privacy", systemImage: "clock.arrow.circlepath") }
             ToolsSettings().frame(width: 580, height: 560).tabItem { Label("Tools", systemImage: "wrench.and.screwdriver") }
             IntegrationsSettings().frame(width: 580, height: 560).tabItem { Label("Integrations", systemImage: "puzzlepiece.extension") } // integrations:
             AdvancedSettings().frame(width: 580, height: 300).tabItem { Label("Advanced", systemImage: "slider.horizontal.3") }
@@ -133,16 +133,13 @@ struct HistorySettings: View {
                 .confirmationDialog("Delete all history and clipboard entries?", isPresented: $confirmClear) {
                     Button("Delete", role: .destructive) { Task { try? await DataStore.shared.clearHistory(includePinned: false); try? await DataStore.shared.clearClipboard() } }
                 }
+            ClipboardSettingsSection() // clipboard: opt-in capture, privacy note, exclude list
             Section("Tools that never record history") {
                 ForEach(model.registry.native) { tool in
                     Toggle(tool.name, isOn: Binding(get: { s.historyDisabledTools.contains(tool.id) }, set: { on in
                         if on { s.historyDisabledTools.append(tool.id) } else { s.historyDisabledTools.removeAll { $0 == tool.id } }
                     }))
                 }
-            }
-            Section {
-                Toggle("Developer clipboard history (opt-in)", isOn: $s.clipboardHistoryEnabled)
-                Text("Only items that look like developer formats are kept, password managers are excluded, and nothing ever leaves this Mac. The capture service ships with the menu bar milestone.").font(.caption).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

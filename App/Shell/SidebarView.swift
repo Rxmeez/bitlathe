@@ -9,6 +9,9 @@ struct SidebarView: View {
         @Bindable var model = model
         List(selection: $model.selectedToolID) {
             if model.searchText.isEmpty {
+                if model.settings.clipboardHistoryEnabled { // clipboard: only when opted in
+                    Section { Label("Clipboard", systemImage: "list.clipboard").tag(ClipboardMonitor.sidebarID) }
+                }
                 if !model.favourites.isEmpty {
                     Section("Favourites") { toolRows(ids: model.favourites) }
                 }

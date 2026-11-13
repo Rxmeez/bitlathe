@@ -53,7 +53,6 @@ public actor DataStore {
 
     private func migrate() async throws {
         guard !migrated else { return }
-        migrated = true
         try await db.execute("""
         CREATE TABLE IF NOT EXISTS history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -77,6 +76,7 @@ public actor DataStore {
         );
         CREATE TABLE IF NOT EXISTS custom_groups (id TEXT PRIMARY KEY, name TEXT NOT NULL, tool_ids TEXT NOT NULL, sort_order INTEGER NOT NULL);
         """)
+        migrated = true   // after the DDL: a concurrent first call must not skip it (actor re-entrancy)
     }
 
     // MARK: History
@@ -249,6 +249,17 @@ public actor DataStore {
             ClipboardEntry(id: Int64(r["id"]?.int ?? 0), content: r["content"]?.string ?? "", detectedToolID: r["tool_id"]?.string,
                            sourceApp: r["source_app"]?.string, createdAt: Date(timeIntervalSince1970: r["created_at"]?.double ?? 0))
         }
+    }
+
+    public func deleteClipboard(id: Int64) async throws {
+        try await migrate()
+        try await db.execute("DELETE FROM clipboard WHERE id = ?", [.int(id)])
+    }
+
+    public func pruneClipboard(olderThan days: Int) async throws {
+        try await migrate()
+        let cutoff = Date.now.addingTimeInterval(-Double(days) * 86400).timeIntervalSince1970
+        try await db.execute("DELETE FROM clipboard WHERE created_at < ?", [.double(cutoff)])
     }
 
     public func clearClipboard() async throws {

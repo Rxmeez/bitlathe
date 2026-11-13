@@ -15,7 +15,7 @@ final class AppModel {
 
     var selectedToolID: String? {
         didSet {
-            guard let id = selectedToolID, id != oldValue else { return }
+            guard let id = selectedToolID, id != oldValue, id != ClipboardMonitor.sidebarID else { return } // clipboard: not a tool
             settings.lastToolID = id
             Task { try? await DataStore.shared.recordUse(id); await refreshUsage() }
         }
@@ -37,6 +37,7 @@ final class AppModel {
         ToolCatalog.registerAll(in: registry)
         selectedToolID = registry.tool(settings.lastToolID)?.id ?? registry.tools.first?.id
         Task { await refreshUsage() }
+        ClipboardMonitor.shared.start() // clipboard: begins polling only if the user opted in
         #if DEBUG
         // Screenshot harness: `open Bitlathe.app --args -BLTool json.format -BLSample 0`
         let defaults = UserDefaults.standard
@@ -52,6 +53,10 @@ final class AppModel {
             if defaults.bool(forKey: "BLSeedHistory") { Self.seedHistory(for: tool) }
             if let path = defaults.string(forKey: "BLInputFile") { session(for: tool).load(urls: [URL(fileURLWithPath: path)]) }
         }
+        if defaults.bool(forKey: "BLClipboard") { // clipboard: screenshot harness
+            settings.clipboardHistoryEnabled = true
+            Task { await Self.seedClipboard(); selectedToolID = ClipboardMonitor.sidebarID }
+        }
         if let q = defaults.string(forKey: "BLSearch") { searchText = q }
         if defaults.bool(forKey: "BLPalette") { showPalette = true }
         #endif
@@ -64,6 +69,25 @@ final class AppModel {
     func closePalette(refocus: Bool = true) { guard showPalette else { return }; showPalette = false; if refocus { focusEditor() } }
     /// DEBUG screenshot harness only: which inspector tab to open on.
     var debugInspectorTab = 0
+
+    #if DEBUG
+    // clipboard: seeds representative entries (screenshots only)
+    private static func seedClipboard() async {
+        try? await DataStore.shared.clearClipboard()
+        let apps = ["com.apple.finder", "com.apple.Safari", "com.apple.Terminal", "com.apple.TextEdit"]
+        let items: [(String, String)] = [
+            ("{\"name\":\"bitlathe\",\"version\":\"1.0.0\",\"tools\":[\"json\",\"jwt\"]}", "json.format"),
+            ("550e8400-e29b-41d4-a716-446655440000", "id.generate"),
+            ("https://example.com/search?q=swift+concurrency&page=2", "url.parse"),
+            ("1700000000", "time.unix"),
+            ("*/15 * * * 1-5", "cron.parse"),
+        ]
+        for (i, item) in items.enumerated() {
+            try? await DataStore.shared.addClipboard(content: item.0, toolID: item.1, sourceApp: apps[i % apps.count])
+        }
+        ClipboardMonitor.shared.bump()
+    }
+    #endif
 
     #if DEBUG
     private static func seedHistory(for tool: AnyTool) {

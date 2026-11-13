@@ -53,6 +53,17 @@ public actor Database {
     }
 
     public func execute(_ sql: String, _ params: [SQLValue] = []) throws {
+        if params.isEmpty {
+            // sqlite3_prepare_v2 only compiles the first statement; sqlite3_exec runs a whole script (migrations).
+            guard let db else { throw ToolError("Database closed") }
+            var err: UnsafeMutablePointer<CChar>?
+            guard sqlite3_exec(db, sql, nil, nil, &err) == SQLITE_OK else {
+                let msg = err.map { String(cString: $0) } ?? "unknown"
+                sqlite3_free(err)
+                throw ToolError("SQL error: \(msg) in \(sql)")
+            }
+            return
+        }
         _ = try query(sql, params)
     }
 

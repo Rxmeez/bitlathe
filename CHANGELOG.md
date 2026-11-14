@@ -5,7 +5,7 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
-## [0.1.1] - 2026-11-13
+## [0.1.1] - 2026-11-14
 
 Two new visualisers: paste a GitHub Actions workflow or Kubernetes manifests and see them as a diagram.
 
